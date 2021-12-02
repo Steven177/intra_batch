@@ -216,12 +216,14 @@ class DotAttentionLayer(nn.Module):
         EXPERIMENT
         Ablating MLP
         """
-         
+        """
         if self.mlp:
             feats2 = self.linear2(self.dropout(self.act(self.linear1(feats))))
         else:
             feats2 = feats
-
+        """
+        feats2 = feats
+        
         feats2 = self.dropout2(feats2)
         feats = feats + feats2 if self.res2 else feats2
         feats = self.norm2(feats) if self.norm2 is not None else feats
