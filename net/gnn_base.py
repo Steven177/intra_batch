@@ -189,6 +189,7 @@ class DotAttentionLayer(nn.Module):
         self.dropout = nn.Dropout(params['dropout_mlp'])
         self.linear2 = nn.Linear(d_hid, embed_dim) if params['mlp'] else None
 
+        print(bool(params['norm1']))
         self.norm1 = LayerNorm(embed_dim) if params['norm1'] else None
         self.norm2 = LayerNorm(embed_dim) if params['norm2'] else None
         self.dropout1 = nn.Dropout(params['dropout_1'])
