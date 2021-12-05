@@ -27,8 +27,8 @@ models:
       dropout_mlp: 0.1
       norm1: 1
       norm2: 1 
-      res1: 1
-      res2: 1
+      res1: 0
+      res2: 0
       dropout_1: 0.1
       dropout_2: 0.1
       mult_attr: 0
