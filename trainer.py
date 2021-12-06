@@ -98,7 +98,7 @@ class Trainer():
                     self.config['dataset']['num_classes'])
 
             # Do training in mixed precision
-            if self.config['train_params']['is_apex'] == 1:
+            if self.config['train_params']['is_apex'] == '1':
                 global amp
                 from apex import amp
                 [self.encoder, self.gnn], self.opt = amp.initialize([self.encoder, self.gnn], self.opt,
