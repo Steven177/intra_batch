@@ -14,6 +14,7 @@ import time
 import torch.nn.functional as F
 import copy
 import sys
+import numpy as np
 from evaluation import Evaluator_DML
 import utils.utils as utils
 import matplotlib.pyplot as plt
@@ -30,11 +31,11 @@ torch.manual_seed(0)
 class Trainer():
     def __init__(self, config, save_folder_nets, save_folder_results,
                  device, timer):
-        torch.naual_seed(0)
+        torch.manual_seed(0)
         random.seed(0)
         np.random.seed(0)
         torch.backends.cudnn.benchmark = False
-        torch.backends.cudmm.determinsitic = True
+        torch.backends.cudnn.determinsitic = True
 
         self.config = config
         self.device = device
