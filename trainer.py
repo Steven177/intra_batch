@@ -30,6 +30,12 @@ torch.manual_seed(0)
 class Trainer():
     def __init__(self, config, save_folder_nets, save_folder_results,
                  device, timer):
+        torch.naual_seed(0)
+        random.seed(0)
+        np.random.seed(0)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudmm.determinsitic = True
+
         self.config = config
         self.device = device
         self.save_folder_results = save_folder_results
@@ -176,7 +182,7 @@ class Trainer():
                         return 0.0, self.encoder
 
                     # Backpropagation
-                    if train_params['is_apex']:
+                    if train_params['is_apex']==1:
                         with amp.scale_loss(loss, self.opt) as scaled_loss:
                             scaled_loss.backward()
                     else:
