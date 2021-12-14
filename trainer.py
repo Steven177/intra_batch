@@ -19,6 +19,7 @@ import utils.utils as utils
 import matplotlib.pyplot as plt
 import os
 import json
+import numpy as np
 from torch import autograd
 from tqdm import tqdm
 autograd.set_detect_anomaly(True)
