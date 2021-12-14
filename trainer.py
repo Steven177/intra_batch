@@ -9,6 +9,7 @@ import torch.nn as nn
 from utils import losses
 import torch
 import random
+import numpy as np
 import data_utility
 import time
 import torch.nn.functional as F
