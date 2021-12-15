@@ -205,11 +205,11 @@ class DotAttentionLayer(nn.Module):
         return custom_forward
     
     def forward(self, feats, egde_index, edge_attr):
-        feats2  = self.att(feats, egde_index, edge_attr)
+        # feats2  = self.att(feats, egde_index, edge_attr)
         # if gradient checkpointing should be apllied for the gnn, comment line above and uncomment line below
         #feats2 = checkpoint.checkpoint(self.custom(), feats, egde_index, edge_attr, preserve_rng_state=True)
 
-        feats2 = self.dropout1(feats2)
+        feats2 = self.dropout1(feats)
         feats = feats + feats2 if self.res1 else feats2
         feats = self.norm1(feats) if self.norm1 is not None else feats
 
