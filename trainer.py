@@ -36,6 +36,7 @@ class Trainer():
         np.random.seed(0)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.determinsitic = True
+        torch.use_deterministic_algorithms(True)
 
         self.config = config
         self.device = device
@@ -53,8 +54,10 @@ class Trainer():
         self.best_recall = 0
         self.best_hypers = None
         self.num_iter = 30 if 'hyper' in config['mode'].split('_') else 1
-        print(torch.__version__)
-        print(torch.version.cuda)
+        print("Pytorch version: {}".format(torch.__version__))
+        print("Cuda version: {}".format(torch.version.cuda))
+        #print(torch.__version__)
+        #print(torch.version.cuda)
         import torch_scatter
         print(torch_scatter.__version__)
         print(torch.__file__)

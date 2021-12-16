@@ -3,6 +3,8 @@ from torch import nn
 import torch
 import math
 
+from einops import rearrange, repeat
+
 
 class MultiHeadDotProduct(nn.Module):
     """
@@ -11,7 +13,7 @@ class MultiHeadDotProduct(nn.Module):
     nhead: number of attention heads
     """
 
-    def __init__(self, embed_dim, nhead, aggr, deterministic, dropout=0.1, mult_attr=0):
+    def __init__(self, embed_dim, nhead, aggr, determinstic, dropout=0.1, mult_attr=0):
         super(MultiHeadDotProduct, self).__init__()
         print("MultiHeadDotProduct")
         self.embed_dim = embed_dim
@@ -19,7 +21,7 @@ class MultiHeadDotProduct(nn.Module):
         self.nhead = nhead
         self.aggr = aggr
         self.mult_attr = mult_attr
-        self.determinitic = deterministic
+        self.determinstic = determinstic
 
         # FC Layers for input
         self.q_linear = nn.Linear(embed_dim, embed_dim)
