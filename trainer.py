@@ -37,6 +37,7 @@ class Trainer():
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.determinsitic = True
         torch.use_deterministic_algorithms(True)
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
         self.config = config
         self.device = device
