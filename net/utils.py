@@ -174,3 +174,22 @@ def softmax(src, index, dim, dim_size, margin: float = 0.):
     out = src / (denom + (margin - src_max).exp()).index_select(dim, index)
 
     return out
+
+def deterministic_softmax(src, index, dim_size, margin: float = 0.0):
+    # Calculate max per node
+    src2 = rearrange(src, "h (a d)-> h a d", d=dim_size)
+    src_max = torch.clamp(torch.max(src2, dim=-2).values, min=0.0)
+
+    # exp(src - max_node)
+    head_indices = torch.arange(src.shape[0]).type(torch.cuda.LongTensor).view(src.shape[0], 1).expand(-1, index.shape[0])
+    ext_src_max = src_max[head_indices, index]
+    src = (src - ext_src_max).exp()
+
+    # Calculate denominator
+    src2 = rearrange(src.squeeze(), "h (a d)-> h a d", d=dim_size)
+    denom = torch.sum(src2, dim=-2)
+    denom = (denom + (margin - src_max).exp())[head_indices, index]
+
+    out = src / denom
+
+    return out
