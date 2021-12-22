@@ -178,7 +178,7 @@ class DotAttentionLayer(nn.Module):
         num_heads = params['num_heads']
         self.res1 = params['res1']
         self.res2 = params['res2']
-        self.prenorm = params['prenorm']
+        self.prenorm = True if params['prenorm'] else None
         
 
         self.att = MultiHeadDotProduct(embed_dim, num_heads, params['aggregator'], True, 
