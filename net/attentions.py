@@ -5,7 +5,7 @@ from torch import nn
 import torch
 import math
 
-from einops import rearrange, repeat
+from einops import rearrange, reduce
 
 
 class MultiHeadDotProduct(nn.Module):
@@ -21,9 +21,12 @@ class MultiHeadDotProduct(nn.Module):
         self.embed_dim = embed_dim
         self.hdim = embed_dim // nhead
         self.nhead = nhead
-        self.aggr = aggr
         self.mult_attr = mult_attr
         self.determinstic = determinstic
+
+        aggr = "sum" if aggr == "add" else aggr
+        assert aggr in ["sum", "max", "mean", "prod"]
+        self.aggr = aggr
 
         # FC Layers for input
         self.q_linear = nn.Linear(embed_dim, embed_dim)
@@ -67,20 +70,16 @@ class MultiHeadDotProduct(nn.Module):
         sim = rearrange(sim, "h n a-> h (n a)")
 
         # Attention scores
-        attn = deterministic_softmax(sim, c, bs).unsqueeze(-1)
+        attn = deterministic_softmax(sim, c, bs)
         # Dropout
         attn = self.dropout(attn)
 
         # Obtain feature matrix and aggregate accordingly
-        feats = attn * v
+        feats = attn.unsqueeze(-1) * v
         feats = rearrange(feats, "h (n a) d-> h n a d", h=self.nhead, n=bs)
-        if self.aggr == "add":
-            feats = torch.sum(feats, dim=-3)
-        elif self.aggr == "max":
-            feats = torch.max(feats, dim=-3).values
-        elif self.aggr == "mean":
-            feats = torch.mean(feats, dim=-3)
 
+        # Aggregate over each node according to aggregator
+        feats = reduce(feats, "h n a d-> h a d", self.aggr)
         feats = rearrange(feats, "h n d -> n (h d)")
 
         # Linear layer

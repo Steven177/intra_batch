@@ -179,7 +179,7 @@ class DotAttentionLayer(nn.Module):
         self.res1 = params['res1']
         self.res2 = params['res2']
 
-        self.att = MultiHeadDotProduct(embed_dim, num_heads, aggr, True, 
+        self.att = MultiHeadDotProduct(embed_dim, num_heads, params['aggregator'], True, 
                                         mult_attr=params['mult_attr']).to(dev)
         
         d_hid = 4 * embed_dim if d_hid is None else d_hid

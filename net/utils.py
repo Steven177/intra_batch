@@ -1,3 +1,4 @@
+from einops.einops import rearrange
 from torch import nn
 import torch
 from torch_scatter import scatter_max, scatter_add
@@ -175,10 +176,18 @@ def softmax(src, index, dim, dim_size, margin: float = 0.):
 
     return out
 
-def deterministic_softmax(src, index, dim_size, margin: float = 0.0):
+def deterministic_softmax(src, index, batch_size):
+    """
+    Deterministic softmax implementation for nodeswise softmax on all neighbours
+    Variables here:
+        h = nheads
+        n = batch_size = nodes
+        a = adjacent nodes
+    """
+
     # Calculate max per node
-    src2 = rearrange(src, "h (a d)-> h a d", d=dim_size)
-    src_max = torch.clamp(torch.max(src2, dim=-2).values, min=0.0)
+    src2 = rearrange(src, "h (n a)-> h n a", n=batch_size)
+    src_max = torch.max(src2, dim=-2).values
 
     # exp(src - max_node)
     head_indices = torch.arange(src.shape[0]).type(torch.cuda.LongTensor).view(src.shape[0], 1).expand(-1, index.shape[0])
@@ -186,9 +195,9 @@ def deterministic_softmax(src, index, dim_size, margin: float = 0.0):
     src = (src - ext_src_max).exp()
 
     # Calculate denominator
-    src2 = rearrange(src.squeeze(), "h (a d)-> h a d", d=dim_size)
+    src2 = rearrange(src, "h (n a)-> h n a", n=batch_size)
     denom = torch.sum(src2, dim=-2)
-    denom = (denom + (margin - src_max).exp())[head_indices, index]
+    denom = (denom + 1e-16)[head_indices, index]
 
     out = src / denom
 
