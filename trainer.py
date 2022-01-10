@@ -299,7 +299,7 @@ class Trainer():
         number_of_edges_logging_csv_file = osp.join(self.save_folder_results, 'graph_structure.csv')
         header = ['Epoch', 'Maximum number of edges', 'Number of edges', 'Connectivity']
         batch_size = train_params['num_classes_iter'] * train_params['num_elements_class']
-        max_number_edges = batch_size * (batch_size-1) / 2
+        max_number_edges = batch_size**2
         data = [epoch, max_number_edges, num_of_edges, num_of_edges/max_number_edges]
 
         if not osp.exists(number_of_edges_logging_csv_file):
