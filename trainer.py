@@ -173,7 +173,7 @@ class Trainer():
 
                 # Normal training with backpropagation
                 for x, Y, I, P in tqdm(self.dl_tr):
-                    loss = self.forward_pass(x, Y, I, P, train_params)
+                    loss = self.forward_pass(x, Y, I, P, train_params, e)
                     # Check possible net divergence
                     if torch.isnan(loss):
                         logger.error("We have NaN numbers, closing\n\n\n")
@@ -209,7 +209,7 @@ class Trainer():
 
         return best_recall_iter, self.encoder
 
-    def forward_pass(self, x, Y, I, P, train_params):
+    def forward_pass(self, x, Y, I, P, train_params, e=0):
         Y = Y.to(self.device)
         self.opt.zero_grad()
         if self.center:
@@ -227,6 +227,9 @@ class Trainer():
         # Add other losses of not pretraining
         if self.gnn_loss or self.of:
             edge_attr, edge_index, fc7 = self.graph_generator.get_graph(fc7, Y)
+
+            save_num_of_edges_to_csv(edge_index, train_params, e) # saves num of edges in case non fully connected graph is chosen
+
             if type(loss) != int:
                 loss = loss.cuda(self.device)
             pred, feats = self.gnn(fc7, edge_index, edge_attr, train_params['output_train_gnn'])
@@ -287,6 +290,30 @@ class Trainer():
         self.losses['Total Loss'].append(loss.item())
 
         return loss
+    
+    
+    def save_num_of_edges_to_csv(edge_index, train_params, epoch):
+        num_of_edges = edge_index.shape[0]
+        
+        number_of_edges_logging_csv_file = osp.join(self.save_folder_results, 'graph_structure.csv')
+        header = ['Epoch', 'Maximum number of edges', 'Number of edges', 'Connectivity']
+        batch_size = train_params['num_classes_iter'] * train_params['num_elements_class']
+        max_number_edges = batch * (batch_size-1) / 2
+        data = [epoch, max_number_of_edges, num_of_edges, num_of_edges/max_number_of_edges]
+
+        if not osp.exists(number_of_edges_logging_csv_file):
+            with open(number_of_edges_logging_csv_file, 'w') as f:
+                writer = csv.writer(f)
+
+                # write the header
+                writer.writerow(header)
+
+        with open(number_of_edges_logging_csv_file, 'a') as f:
+            writer = csv.writer(f)
+
+            # write the data
+            writer.writerow(data)
+
 
     def evaluate(self, eval_params, scores, e, best_recall_iter):
         if not self.config['mode'] == 'pretraining':
