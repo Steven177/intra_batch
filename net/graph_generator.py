@@ -3,12 +3,13 @@ import torch.nn.functional as F
 
 
 class GraphGenerator():
-    def __init__(self, dev, thresh=0, thresh_mode="fc", sim_type='correlation', set_negative='hard'):
+    def __init__(self, dev, thresh=0, thresh_mode="fc", sim_type='correlation', set_negative='hard', absolute=False):
         self.device = dev
         self.thresh = thresh
         self.thresh_mode = thresh_mode
         self.sim = sim_type
         self.set_negative  = set_negative
+        self.absolute  = absolute
 
     @staticmethod
     def set_negative_to_zero(W):
@@ -48,11 +49,6 @@ class GraphGenerator():
             x = (x - x.mean(dim=1).unsqueeze(1))
             norms = x.norm(dim=1)
             W = torch.mm(x, x.t()) / torch.ger(norms, norms)
-        elif self.sim == 'absolute_correlation':
-            x = (x - x.mean(dim=1).unsqueeze(1))
-            norms = x.norm(dim=1)
-            W = torch.mm(x, x.t()) / torch.ger(norms, norms)
-            W = torch.abs(W) # taking absolute correlations
         elif self.sim == 'cosine':
             W = torch.mm(x, x.t())
         elif self.sim == 'learnt':
@@ -62,6 +58,9 @@ class GraphGenerator():
                 for j, xj in enumerate(x[(i + 1):], i + 1):
                     W[i, j] = W[j, i] = self.sim(xi, xj) + 1e-8
             W = W.cuda()
+
+        if self.absolute:
+            W = torch.abs(W)
 
         if self.set_negative == 'hard':
             W = self.set_negative_to_zero(W.to(self.device))
