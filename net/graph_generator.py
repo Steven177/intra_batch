@@ -3,9 +3,10 @@ import torch.nn.functional as F
 
 
 class GraphGenerator():
-    def __init__(self, dev, thresh=0, sim_type='correlation', set_negative='hard'):
+    def __init__(self, dev, thresh=0, thresh_mode="fc", sim_type='correlation', set_negative='hard'):
         self.device = dev
         self.thresh = thresh
+        self.thresh_mode = thresh_mode
         self.sim = sim_type
         self.set_negative  = set_negative
 
@@ -22,11 +23,23 @@ class GraphGenerator():
         return W
 
     def _get_A(self, W):
-        if self.thresh != 'no':
+        # hn, hp, hn&hp, fc
+        if self.thresh_mode == 'hn': # hn = hard negative
+            W  = torch.where(W < self.thresh, W, torch.tensor(0).float().to(self.device))
+            A = torch.ones_like(W).where(W < self.thresh, torch.tensor(0).float().to(self.device))
+
+        elif self.thresh_mode == 'hp': # hp = hard positive
             W  = torch.where(W > self.thresh, W, torch.tensor(0).float().to(self.device))
             A = torch.ones_like(W).where(W > self.thresh, torch.tensor(0).float().to(self.device))
-        else:
+
+        elif self.thresh_mode == 'hn_hp': # hn_hp = hard negative and hard positive
+            W  = torch.where(W > self.thresh, W, torch.tensor(0).float().to(self.device))
+            A = torch.ones_like(W).where(W > self.thresh, torch.tensor(0).float().to(self.device))
+
+        elif self.thresh_mode == 'fc': # fc = fully-connected
             A = torch.ones_like(W)
+        else:
+            raise ValueError("Check config file: thresh_mode invalid")
 
         return W, A
 
@@ -35,10 +48,15 @@ class GraphGenerator():
             x = (x - x.mean(dim=1).unsqueeze(1))
             norms = x.norm(dim=1)
             W = torch.mm(x, x.t()) / torch.ger(norms, norms)
+        elif self.sim == 'absolute_correlation':
+            x = (x - x.mean(dim=1).unsqueeze(1))
+            norms = x.norm(dim=1)
+            W = torch.mm(x, x.t()) / torch.ger(norms, norms)
+            W = torch.abs(W) # taking absolute correlations
         elif self.sim == 'cosine':
             W = torch.mm(x, x.t())
         elif self.sim == 'learnt':
-            n = x.shape[0]
+            n = x.shape[0] # samples
             W = torch.zeros(n, n)
             for i, xi in enumerate(x):
                 for j, xj in enumerate(x[(i + 1):], i + 1):
@@ -47,7 +65,8 @@ class GraphGenerator():
 
         if self.set_negative == 'hard':
             W = self.set_negative_to_zero(W.to(self.device))
-        else:
+
+        if self.set_negative == 'soft':
             W = self.set_negative_to_zero_soft(W)
 
         return W
