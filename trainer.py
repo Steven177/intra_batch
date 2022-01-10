@@ -300,7 +300,7 @@ class Trainer():
         header = ['Epoch', 'Maximum number of edges', 'Number of edges', 'Connectivity']
         batch_size = train_params['num_classes_iter'] * train_params['num_elements_class']
         max_number_edges = batch_size * (batch_size-1) / 2
-        data = [epoch, max_number_of_edges, num_of_edges, num_of_edges/max_number_of_edges]
+        data = [epoch, max_number_edges, num_of_edges, num_of_edges/max_number_edges]
 
         if not osp.exists(number_of_edges_logging_csv_file):
             with open(number_of_edges_logging_csv_file, 'w') as f:
