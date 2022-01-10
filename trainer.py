@@ -1,6 +1,7 @@
 import os.path as osp
 import logging
 import random
+import csv
 import net
 import dataset
 from RAdam import RAdam
@@ -228,7 +229,7 @@ class Trainer():
         if self.gnn_loss or self.of:
             edge_attr, edge_index, fc7 = self.graph_generator.get_graph(fc7, Y)
 
-            save_num_of_edges_to_csv(edge_index, train_params, e) # saves num of edges in case non fully connected graph is chosen
+            self.save_num_of_edges_to_csv(edge_index, train_params, e) # saves num of edges in case non fully connected graph is chosen
 
             if type(loss) != int:
                 loss = loss.cuda(self.device)
@@ -292,7 +293,7 @@ class Trainer():
         return loss
     
     
-    def save_num_of_edges_to_csv(edge_index, train_params, epoch):
+    def save_num_of_edges_to_csv(self, edge_index, train_params, epoch):
         num_of_edges = edge_index.shape[0]
         
         number_of_edges_logging_csv_file = osp.join(self.save_folder_results, 'graph_structure.csv')
