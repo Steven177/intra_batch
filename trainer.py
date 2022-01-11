@@ -4,6 +4,7 @@ import random
 import csv
 import net
 import dataset
+import shutil
 from RAdam import RAdam
 from collections import defaultdict
 import torch.nn as nn
@@ -173,8 +174,8 @@ class Trainer():
                         g['lr'] = train_params['lr'] / 10.
 
                 # Normal training with backpropagation
-                for x, Y, I, P in tqdm(self.dl_tr):
-                    loss = self.forward_pass(x, Y, I, P, train_params, e)
+                for iter_num, x, Y, I, P in enumerate(tqdm(self.dl_tr)):
+                    loss = self.forward_pass(x, Y, I, P, train_params, e, iter_num)
                     # Check possible net divergence
                     if torch.isnan(loss):
                         logger.error("We have NaN numbers, closing\n\n\n")
@@ -205,12 +206,11 @@ class Trainer():
             logger.info(', '.join([str(k) + ': ' + str(v[-1]) for k, v in self.losses_mean.items()]))
 
         end = time.time()
-
         self.save_results(train_params, since, end, best_recall_iter, scores)
 
         return best_recall_iter, self.encoder
 
-    def forward_pass(self, x, Y, I, P, train_params, e=0):
+    def forward_pass(self, x, Y, I, P, train_params, e=0, iter_num=0):
         Y = Y.to(self.device)
         self.opt.zero_grad()
         if self.center:
@@ -229,7 +229,7 @@ class Trainer():
         if self.gnn_loss or self.of:
             edge_attr, edge_index, fc7 = self.graph_generator.get_graph(fc7, Y)
 
-            self.save_num_of_edges_to_csv(edge_index, train_params, e) # saves num of edges in case non fully connected graph is chosen
+            self._save_num_of_edges_to_csv(edge_index, train_params, e, iter_num) # saves num of edges in case non fully connected graph is chosen
 
             if type(loss) != int:
                 loss = loss.cuda(self.device)
@@ -293,23 +293,30 @@ class Trainer():
         return loss
     
     
-    def save_num_of_edges_to_csv(self, edge_index, train_params, epoch):
+    def _save_num_of_edges_to_csv(self, edge_index, train_params, epoch, iter_num):
+        """
+        Saves graph structure information to a CSV file
+        """
         num_of_edges = edge_index.shape[0]
         
-        number_of_edges_logging_csv_file = osp.join(self.save_folder_results, 'graph_structure.csv')
+        self.number_of_edges_logging_csv_file = osp.join(self.save_folder_results, 'graph_structure.csv')
         header = ['Epoch', 'Maximum number of edges', 'Number of edges', 'Connectivity']
         batch_size = train_params['num_classes_iter'] * train_params['num_elements_class']
         max_number_edges = batch_size**2
         data = [epoch, max_number_edges, num_of_edges, num_of_edges/max_number_edges]
-
-        if not osp.exists(number_of_edges_logging_csv_file):
-            with open(number_of_edges_logging_csv_file, 'w') as f:
+        
+        """
+        if osp.exists(self.number_of_edges_logging_csv_file) and epoch==0 and iter_num==0:
+            os.remove(self.number_of_edges_logging_csv_file)
+        """
+        if not osp.exists(self.number_of_edges_logging_csv_file):
+            with open(self.number_of_edges_logging_csv_file, 'w') as f:
                 writer = csv.writer(f)
 
                 # write the header
                 writer.writerow(header)
 
-        with open(number_of_edges_logging_csv_file, 'a') as f:
+        with open(self.number_of_edges_logging_csv_file, 'a') as f:
             writer = csv.writer(f)
 
             # write the data
@@ -377,6 +384,10 @@ class Trainer():
         
         results_dir = osp.join(self.save_folder_results, file_name)
         utils.make_dir(results_dir)
+
+        if hasattr(self, "number_of_edges_logging_csv_file") and osp.exists(self.number_of_edges_logging_csv_file):
+            csv_file_name = osp.split(self.number_of_edges_logging_csv_file)[-1]
+            shutil.move(self.number_of_edges_logging_csv_file, osp.join(results_dir,csv_file_name))
 
         if not self.config['mode'] == 'pretraining':
             with open(
