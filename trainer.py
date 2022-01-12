@@ -48,18 +48,18 @@ class Trainer():
         self.best_recall = 0
         self.best_hypers = None
         self.num_iter = 30 if 'hyper' in config['mode'].split('_') else 1
-        print("Pytorch version: {}".format(torch.__version__))
-        print("Cuda version: {}".format(torch.version.cuda))
+        import sklearn
+        import torch_scatter
+        import torchvision
+        # print("Pytorch version: {}".format(torch.__version__))
+        # print("Cuda version: {}".format(torch.version.cuda))
         #print(torch.__version__)
         #print(torch.version.cuda)
-        import torch_scatter
-        print(torch_scatter.__version__)
-        print(torch.__file__)
-        import sklearn
-        print(sklearn.__version__)
-        import torchvision
-        print(torchvision.__version__)
-        print(torchvision.__file__)
+        # print(torch_scatter.__version__)
+        # print(torch.__file__)
+        # print(sklearn.__version__)
+        # print(torchvision.__version__)
+        # print(torchvision.__file__)
     def train(self):
         best_recall = 0
 
@@ -287,6 +287,7 @@ class Trainer():
         self.losses['Total Loss'].append(loss.item())
 
         return loss
+
 
     def evaluate(self, eval_params, scores, e, best_recall_iter):
         if not self.config['mode'] == 'pretraining':

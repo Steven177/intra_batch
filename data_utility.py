@@ -125,6 +125,26 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
             num_workers=1,
             pin_memory=True)
 
+    elif 'cluster' in mode.split('_'):
+        
+        sampler = ClusterSampler(1, 7) #(num_classes_iter, num_elements_class)
+
+        dl_ev_gnn = torch.utils.data.DataLoader(
+            dataset_ev,
+            batch_size=7, #size_batch,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=1,
+            drop_last=True,
+            pin_memory=True)
+
+        dl_ev = torch.utils.data.DataLoader(
+            copy.deepcopy(dataset_ev),
+            batch_size=64,
+            shuffle=False,
+            num_workers=1,
+            pin_memory=True)
+
     else:
         dl_ev = torch.utils.data.DataLoader(
             dataset_ev,
