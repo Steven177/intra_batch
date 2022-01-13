@@ -418,7 +418,7 @@ class MutualInformationSampler(Sampler):
         else:
             self.sampler = None
 
-    def get_cluster(self):
+    def get_clusters(self):
         logger.info(self.nb_clusters)
         # generate distance mat for all classes as in Hierachrical Triplet Loss
         if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
