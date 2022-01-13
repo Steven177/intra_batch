@@ -432,6 +432,7 @@ class MutualInformationSampler(Sampler):
         print(f' x : {x.shape}')
         prob_x = torch.nn.functional.softmax(x, dim=0)
         print(f' prob x : {prob_x.shape}')
+        print(f' prob x numpy : {prob_x.numpy().shape}')
 
         # Calculate JSD for all samples
         # prob_x_np = prob_x.numpy()
