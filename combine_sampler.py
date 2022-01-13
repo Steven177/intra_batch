@@ -402,6 +402,7 @@ class ClusterSampler(Sampler):
 
 class MutualInformationSampler(ClusterSampler):
     def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None):
+        logger.info('Mutual Information Sampler')
         super().__init__(num_classes, num_samples, nb_clusters, batch_sampler)
 
     def get_cluster(self):
