@@ -9,6 +9,7 @@ import sklearn.cluster
 import sklearn.metrics.cluster
 import os
 import time
+from tqdm import tqdm
 logger = logging.getLogger('GNNReID.Evaluator')
 
 
@@ -94,7 +95,7 @@ class Evaluator_DML():
         paths = []
         fc7s, Ys = list(), list()
         with torch.no_grad():
-            for X, Y, I, P in dataloader:
+            for X, Y, I, P in tqdm(dataloader):
                 if torch.cuda.is_available(): X = X.to(self.dev)
                 _, fc7 = model(X, output_option=self.output_test_enc, val=True)
                 
@@ -118,13 +119,13 @@ class Evaluator_DML():
         
         # Update after feature dict for sampling
         pti = dl_ev_gnn.dataset.path_to_ind
-        feature_dict = {pti[p]: f for p, f in zip(P, X)}
+        feature_dict = {pti[p]: f for p, f in zip(P, X)}  # {ind: feature}
         gallery_dict = {pti[p]: f for p, f in zip(P_G, X_G)} if in_shop else None
         dl_ev_gnn.sampler.feature_dict = feature_dict
         
         features, labels, paths = list(), list(), list()
         with torch.no_grad():
-            for X, Y, I, P in dl_ev_gnn:
+            for X, Y, I, P in tqdm(dl_ev_gnn):
                 fc7 = torch.stack([feature_dict[i.data.item()] for i in I]).to(self.dev)
 
                 edge_attr, edge_index, fc7 = graph_generator.get_graph(fc7)
