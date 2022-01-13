@@ -354,8 +354,8 @@ class ClusterSampler(Sampler):
         if self.sampler:
             self.cl_b, self.n_cl = self.sampler.sample()
             quality_checker.num_samps=self.n_cl
-        if self.epoch % 5 == 2:
-            self.get_clusters()
+        # if self.epoch % 5 == 1:
+        self.get_clusters()
         
         ddict = defaultdict(list)
         for idx, label in zip(self.indices, self.cluster):
