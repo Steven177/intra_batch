@@ -400,10 +400,23 @@ class ClusterSampler(Sampler):
 
 
 
-class MutualInformationSampler(ClusterSampler):
+class MutualInformationSampler(Sampler):
     def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None):
         logger.info('Mutual Information Sampler')
-        super().__init__(num_classes, num_samples, nb_clusters, batch_sampler)
+        # kmeans
+        self.feature_dict = None
+        self.bs = num_classes * num_samples
+        self.cl_b = num_classes
+        self.n_cl = num_samples
+        self.epoch = 0
+        self.nb_clusters = nb_clusters
+
+        if batch_sampler == 'NumberSampler':
+            self.sampler = NumberSampler(num_classes, num_samples)
+        elif batch_sampler == 'BatchSizeSampler':
+            self.sampler = BatchSizeSampler()
+        else:
+            self.sampler = None
 
     def get_cluster(self):
         logger.info(self.nb_clusters)
@@ -465,7 +478,52 @@ class MutualInformationSampler(ClusterSampler):
         #self.nb_clusters = 600
         #logger.info('ward')
         #self.cluster = sklearn.cluster.AgglomerativeClustering(n_clusters=self.nb_clusters).fit(x).labels_
+    def __iter__(self):
+        if self.sampler:
+            self.cl_b, self.n_cl = self.sampler.sample()
+            #quality_checker.num_samps=self.n_cl
+        # if self.epoch % 5 == 1:
+        self.get_clusters()
+        
+        ddict = defaultdict(list)
+        for idx, label in zip(self.indices, self.cluster):
+            ddict[label].append(idx)
 
+        l_inds = []
+        for key in ddict:
+            l_inds.append(ddict[key]) 
+        
+        l_inds = list(map(lambda a: random.sample(a, len(a)), l_inds))
+
+        for inds in l_inds:
+            choose = copy.deepcopy(inds)
+            while len(inds) < self.n_cl:
+                inds += [random.choice(choose)]
+
+        # split lists of a class every n_cl elements
+        split_list_of_indices = []
+        for inds in l_inds:
+            inds = inds + np.random.choice(inds, size=(len(inds) // self.n_cl + 1)*self.n_cl - len(inds), replace=False).tolist()
+            # drop the last < n_cl elements
+            while len(inds) >= self.n_cl:
+                split_list_of_indices.append(inds[:self.n_cl])
+                # self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
+                inds = inds[self.n_cl:] 
+            assert len(inds) == 0
+                
+        # shuffle the order of classes --> Could it be that same class appears twice in one batch?
+        random.shuffle(split_list_of_indices)
+        if len(split_list_of_indices) % self.cl_b != 0:
+            b = np.random.choice(np.arange(len(split_list_of_indices)), size=self.cl_b - len(split_list_of_indices) % self.cl_b, replace=False).tolist()
+            [split_list_of_indices.append(split_list_of_indices[m]) for m in b]
+        assert len(split_list_of_indices) % self.cl_b == 0
+
+        self.flat_list = [item for sublist in split_list_of_indices for item in sublist]
+
+        return iter(self.flat_list)
+
+    def __len__(self):
+        return len(self.flat_list)
 
 
 
