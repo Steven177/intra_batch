@@ -434,7 +434,8 @@ class MutualInformationSampler(Sampler):
         print(f' prob x : {prob_x.shape}')
 
         # Calculate JSD for all samples
-        prob_x_np = prob_x.numpy()
+        # prob_x_np = prob_x.numpy()
+
         # dis_mat = scipy.spatial.distance.jensenshannon(prob_x_np, prob_x_np, base=None, axis=0, keepdims=False)
 
         N = prob_x.shape[0]
@@ -444,7 +445,7 @@ class MutualInformationSampler(Sampler):
 
         for i in range(N):
             for j in range(N):
-                dis_mat[i,j] = scipy.spatial.distance.jensenshannon(prob_x_np[i,:], prob_x_np[j,:])
+                dis_mat[i,j] = scipy.spatial.distance.jensenshannon(prob_x[i,:], prob_x[j,:])
 
 
 
