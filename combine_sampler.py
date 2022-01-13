@@ -442,7 +442,7 @@ class MutualInformationSampler(Sampler):
         N = prob_x.shape[0]
 
 
-        dis_mat = np.zeros(N)
+        dis_mat = np.zeros((N,N))
 
         for i in range(N):
             for j in range(N):
