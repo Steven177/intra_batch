@@ -2,6 +2,7 @@ from torch.utils.data.sampler import Sampler
 import random
 import copy
 import torch
+import scipy
 import sklearn.metrics.pairwise
 from collections import defaultdict
 import numpy as np
@@ -119,7 +120,7 @@ class KReciprocalSampler(Sampler):
         if self.sampler:
             self.num_classes, self.num_samples = self.sampler.sample()
             self.bs = self.num_classes * self.num_samples
-            quality_checker.num_samples = self.bs
+            # quality_checker.num_samples = self.bs
         
         if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
             x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
@@ -353,7 +354,7 @@ class ClusterSampler(Sampler):
     def __iter__(self):
         if self.sampler:
             self.cl_b, self.n_cl = self.sampler.sample()
-            quality_checker.num_samps=self.n_cl
+            #quality_checker.num_samps=self.n_cl
         # if self.epoch % 5 == 1:
         self.get_clusters()
         
@@ -379,7 +380,7 @@ class ClusterSampler(Sampler):
             # drop the last < n_cl elements
             while len(inds) >= self.n_cl:
                 split_list_of_indices.append(inds[:self.n_cl])
-                self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
+                # self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
                 inds = inds[self.n_cl:] 
             assert len(inds) == 0
                 
@@ -411,15 +412,53 @@ class MutualInformationSampler(ClusterSampler):
             self.labels = [k for k in self.feature_dict.keys() for f in self.feature_dict[k].values()]
             self.indices = [ind for k in self.feature_dict.keys() for ind in self.feature_dict[k].keys()]
         else:
-            x = torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0)
+            x = torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0) # [num_samples, -1]
             self.indices = [k for k in self.feature_dict.keys()]
         
+        print(f' x : {x.shape}')
         prob_x = torch.nn.functional.softmax(x, dim=0)
-        
+        print(f' prob x : {prob_x.shape}')
 
+        # Calculate JSD for all samples
+        prob_x_np = prob_x.numpy()
+        # dis_mat = scipy.spatial.distance.jensenshannon(prob_x_np, prob_x_np, base=None, axis=0, keepdims=False)
+
+        N = prob_x.shape[0]
+
+        prob_x_np = np.reshape(prob_x_np, (N, -1))
+
+        dis_mat = np.zeros(N)
+
+        for i in range(N):
+            for j in range(N):
+                dis_mat[i,j] = scipy.spatial.jensonshannon(prob_x_np[i,:], prob_x_np[j,:])
+
+
+
+
+        logger.info('DBSCAN')
+        eps = 0.9
+        min_samples = 5
+        logger.info("Eps {}, min samples {}".format(eps, min_samples))
+        self.cluster = sklearn.cluster.DBSCAN(eps=eps, min_samples=min_samples, metric='precomputed').fit(dis_mat).labels_
+
+        # Cluster samples according to distance matrix (Agglomerative or DBSCAN)
+        # https://stackoverflow.com/questions/16246066/clustering-words-based-on-distance-matrix
+        # https://scikit-learn.org/dev/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
+        # class sklearn.cluster.DBSCAN(eps=0.5, *, min_samples=5, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)[source]¶
+        # https://scikit-learn.org/dev/modules/generated/sklearn.cluster.AgglomerativeClustering.html#sklearn.cluster.AgglomerativeClustering
+
+        # Sample according to clusters 
+        # from each class c sample i samples        
+
+
+        # ==--------------JENNY-------------------==
+        # self.nb_clusters = 600
+        #logger.info('ward')
+        # self.cluster = sklearn.cluster.AgglomerativeClustering(n_clusters=self.nb_clusters).fit(x).labels_
         
-        logger.info("Kmeans")
-        self.cluster = sklearn.cluster.KMeans(self.nb_clusters).fit(x).labels_        
+        # logger.info("Kmeans")
+        # self.cluster = sklearn.cluster.KMeans(self.nb_clusters).fit(x).labels_        
         #logger.info('spectral')
         #self.cluster = sklearn.cluster.SpectralClustering(self.nb_clusters, assign_labels="discretize", random_state=0).fit(x).labels_
         #self.nb_clusters = 600
