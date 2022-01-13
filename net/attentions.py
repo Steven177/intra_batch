@@ -43,7 +43,7 @@ class MultiHeadDotProduct(nn.Module):
     def forward(self, feats: torch.tensor, edge_index: torch.tensor, edge_attr: torch.tensor):
         q = k = v = feats
         bs = q.size(0)
-        print("feats have dim {}".format(q))
+        print("feats have dim {}".format(q.shape))
         
         # FC layer
         k = self.k_linear(k)
