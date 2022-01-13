@@ -445,7 +445,7 @@ class MutualInformationSampler(Sampler):
 
         for i in range(N):
             for j in range(N):
-                dis_mat[i,j] = scipy.spatial.jensonshannon(prob_x_np[i,:], prob_x_np[j,:])
+                dis_mat[i,j] = scipy.spatial.distance.jensonshannon(prob_x_np[i,:], prob_x_np[j,:])
 
 
 
