@@ -82,7 +82,7 @@ class Trainer():
 
             # In case of pretrained network
             if self.config['models']['finetuning_net_params']['pretrained_path'] != "no":
-                 load_dict = torch.load(self.config['models']['finetuning_net_params']['pretrained_path'], 
+                load_dict = torch.load(self.config['models']['finetuning_net_params']['pretrained_path'], 
                         map_location='cpu')
                 self.finetuning_net.load_state_dict(load_dict)
             """
