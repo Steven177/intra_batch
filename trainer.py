@@ -294,7 +294,7 @@ class Trainer():
         # LOSS AFTER SECOND NETWORK
         # Compute CE loss
         if self.finetuning_loss:
-            loss_finetuning = self.gnn_loss(predicted/self.config['train_params']['temperatur'], Y)
+            loss_finetuning = self.gnn_loss(predicted[-1]/self.config['train_params']['temperatur'], Y)
             loss += train_params['loss_fn']['scaling_gnn'] * loss_finetuning
             self.losses['Cross Entropy2'].append(loss.item())
 
