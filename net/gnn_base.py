@@ -213,7 +213,6 @@ class DotAttentionLayer(nn.Module):
                 feats2 = self.norm1(feats)
             else:
                 feats2 = feats
-
             if self.att:
                 feats2  = self.att(feats2, egde_index, edge_attr)
             
@@ -242,7 +241,6 @@ class DotAttentionLayer(nn.Module):
                 feats2  = self.att(feats, egde_index, edge_attr)
             else:
                 feats2 = feats
-
             feats2 = self.dropout1(feats2)
             if self.res1:
                 feats = feats + feats2

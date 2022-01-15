@@ -23,7 +23,7 @@ class Evaluator_DML():
         self.dev = dev
 
     def evaluate(self, model, dataloader, gallery_dl,
-            gnn=None, graph_generator=None, dl_ev_gnn=None, net_type='bn_inception',
+            gnn=None, graph_generator=None, dl_ev_gnn=None, finetuning_net=None, net_type='bn_inception',
             dataroot='CARS', nb_classes=None):
         self.dataroot = dataroot
         
@@ -39,6 +39,11 @@ class Evaluator_DML():
             gallery_X, gallery_T, gallery_P = self.predict_batchwise(model, gallery_dl)
         
         mode = self.get_mode(dl_ev_gnn, dataloader)
+
+        if mode == 'finetuning':
+            finetuning_net.eval()
+            logger.info("Evaluate KNN evaluate")
+            X = self.predict_batchwise_finetuning(finetuning_net, X, T, P, dl_ev, mode)
 
         if mode is not 'backbone' and dataroot != 'in_shop':
             gnn_is_training = gnn.training
@@ -108,6 +113,21 @@ class Evaluator_DML():
         paths = [p for b in paths for p in b]
         
         return torch.squeeze(fc7), torch.squeeze(Y), paths
+
+    def predict_batchwise_finetuning(self, finetuning_net, X, T, P, dataloader, mode, X_G=None, P_G=None):
+        logger.info("Finetuning Net")
+
+        fc7s = list()
+        with torch.no_grad():
+            for X, _, _, _ in dataloader:
+                if torch.cuda.is_available(): X = X.to(self.dev)
+                fc7 = finetuning_net(X, output_option=self.output_test_enc, val=True)
+                
+                fc7s.append(fc7)
+                
+        fc7 = torch.cat([f.unsqueeze(0).cpu() for b in fc7s for f in b], 0)
+        
+        return torch.squeeze(fc7)
 
     def predict_batchwise_gnn(self, gnn, graph_generator, X, T, P, dl_ev_gnn, mode, X_G=None, P_G=None):
         logger.info("KNN")

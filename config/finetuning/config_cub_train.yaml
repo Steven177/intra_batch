@@ -1,4 +1,4 @@
-mode: "train" #train/test/hyper_search/pretraining
+mode: "finetuning" #train/test/hyper_search/pretraining/finetuning
 application: "DML"
 output_paht: "."
 
@@ -15,6 +15,20 @@ models:
   
   finetuning_net_params:
     pretrained_path: "no" 
+    every: 0
+    finetuning:
+      num_layers: 1
+      att: 1
+      prenorm: 0
+      mlp: 1
+      dropout_mlp: 0.1
+      norm1: 1
+      norm2: 1 
+      res1: 1
+      res2: 1
+      dropout_1: 0.1
+      dropout_2: 0.1
+
     classifier:
       num_classes: 100
 
@@ -28,6 +42,8 @@ models:
       aggregator: "add"
       num_heads: 2 
       attention: "dot" 
+      att: 1
+      prenorm: 0
       mlp: 1
       dropout_mlp: 0.1
       norm1: 1
@@ -71,7 +87,7 @@ train_params:
   output_train_enc: "plain"
   output_train_gnn: "plain"
   loss_fn:
-    fns: "lsgnn_lsce" #ce/focalce can be used instead of lsce and lsgnn/focalgnn instead of gnn, rest can be added by ce_gnn_center...
+    fns: "lsfinetuning_lsce" #ce/focalce can be used instead of lsce and lsgnn/focalgnn instead of gnn, rest can be added by ce_gnn_center...
     scaling_ce: 1
     scaling_gnn: 1
     scaling_distance: 0.01

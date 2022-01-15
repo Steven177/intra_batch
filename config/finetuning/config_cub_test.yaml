@@ -1,4 +1,4 @@
-mode: "test" #train/test/hyper_search/pretraining
+mode: "finetuning" #train/test/hyper_search/pretraining/finetuning
 application: "DML"
 output_paht: "."
 

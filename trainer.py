@@ -78,6 +78,14 @@ class Trainer():
             
             self.encoder = self.encoder.to(self.device) 
             
+            self.finetuning_net = net.FinetuningNetwork(sz_embed.to(self.device), self.device, self.config['finetuning_net_params'], num_layers=self.config['finetuning_net_params']['finetuning']['num_layers'])
+
+            # In case of pretrained network
+            if self.config['models']['finetuning_net_params']['pretrained_path'] != "no":
+                 load_dict = torch.load(self.config['models']['finetuning_net_params']['pretrained_path'], 
+                        map_location='cpu')
+                self.finetuning_net.load_state_dict(load_dict)
+            """
             self.gnn = net.GNNReID(self.device, 
                     self.config['models']['gnn_params'], 
                     sz_embed).to(self.device)
@@ -88,10 +96,15 @@ class Trainer():
                 self.gnn.load_state_dict(load_dict)
 
             self.graph_generator = net.GraphGenerator(self.device, **self.config['graph_params'])
+            """
+
             self.evaluator = Evaluator_DML(nb_clusters=self.nb_clusters, 
                     dev=self.device, **self.config['eval_params'])
-             
+            """ 
             params = list(set(self.encoder.parameters())) + list(set(self.gnn.parameters()))
+            """
+            params = list(set(self.encoder.parameters())) + list(set(self.finetuning_net.parameters()))
+
             param_groups = [{'params': params,
                              'lr': self.config['train_params']['lr']}]
 
@@ -105,8 +118,9 @@ class Trainer():
             if self.config['train_params']['is_apex'] == 1:
                 global amp
                 from apex import amp
-                [self.encoder, self.gnn], self.opt = amp.initialize([self.encoder, self.gnn], self.opt,
-                                                        opt_level="O1")
+                # [self.encoder, self.gnn], self.opt = amp.initialize([self.encoder, self.gnn], self.opt,opt_level="O1")
+                [self.encoder, self.finetuning_net], self.opt = amp.initialize([self.encoder, self.finetuning_net], self.opt,opt_level="O1")
+
             if torch.cuda.device_count() > 1:
                 self.encoder = nn.DataParallel(self.encoder)
 
@@ -140,6 +154,7 @@ class Trainer():
         logger.info("Best Hyperparameters found: " + best_hypers)
         logger.info("Achieved {} with this hyperparameters".format(best_recall))
         logger.info("-----------------------------------------------------\n")
+    
     def execute(self, train_params, eval_params):
         since = time.time()
         best_recall_iter = 0
@@ -156,15 +171,24 @@ class Trainer():
                     logger.info("reduce learning rate")
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
+                    """
                     self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
                         'gnn_' + self.fn + '.pth')))
+                    """
+                    self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                        'finetuning_net_' + self.fn + '.pth')))
+
                     for g in self.opt.param_groups:
                         g['lr'] = train_params['lr'] / 10.
 
                 if e == 51:
                     logger.info("reduce learning rate")
+                    """
                     self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
                         'gnn_' + self.fn + '.pth')))
+                    """
+                    self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                        'finetuning_net_' + self.fn + '.pth')))
 
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
@@ -241,23 +265,39 @@ class Trainer():
             self.opt_center.zero_grad()
         
         probs, fc7 = self.encoder(x.to(self.device), output_option=train_params['output_train_enc'])
- 
+        
+        # LOSS AFTER FIRST NETWORK
         # Compute CE Loss
         loss = 0
         if self.ce:
             loss0 = self.ce(probs/self.config['train_params']['temperatur'], Y)
             loss+= train_params['loss_fn']['scaling_ce'] * loss0
             self.losses['Cross Entropy'].append(loss.item())
+        
+       
 
         # Add other losses of not pretraining
+        """
         if self.gnn_loss or self.of:
             edge_attr, edge_index, fc7 = self.graph_generator.get_graph(fc7, Y)
             if type(loss) != int:
                 loss = loss.cuda(self.device)
             pred, feats = self.gnn(fc7, edge_index, edge_attr, train_params['output_train_gnn'])
-        
+        """
         #self.comp_list.append(self.comp(fc7, feats[-1]))
+        
+        # Forward step of finetuning net
+        if self.finetuning_loss:
+            predicted = self.finetuning_net(fc7)
+        
+        # LOSS AFTER SECOND NETWORK
+        # Compute CE loss
+        if self.loss_finetuning:
+            loss_finetuning = self.gnn_loss(predicted/self.config['train_params']['temperatur'], Y)
+            loss += train_params['loss_fn']['scaling_gnn'] * loss_finetuning
+            self.losses['Cross Entropy2'].append(loss.item())
 
+        # Compute GNN loss
         if self.gnn_loss:
             if self.every:
                 loss1 = [gnn_loss(pr/self.config['train_params']['temperatur'], Y) for gnn_loss, pr in zip(self.gnn_loss, pred)]
@@ -323,6 +363,16 @@ class Trainer():
                             self.gallery_dl, net_type=self.net_type,
                             dataroot=self.config['dataset']['dataset_short'], 
                             nb_classes=self.config['dataset']['num_classes'])
+                
+                # ASK PHILIPP
+                elif self.config['mode'] == 'finetuning':
+                    mAP, top = self.evaluator.evaluate(self.encoder, self.dl_ev,
+                            self.gallery_dl, self.finetuning_net, 
+                            dl_ev_gnn=self.dl_ev_gnn, net_type=self.net_type,
+                            dataroot=self.config['dataset']['dataset_short'],
+                            nb_classes=self.config['dataset']['num_classes'])      
+                # # ASK PHILIPP
+
                 else: # all other modes that involve gnn during test time  
                     mAP, top = self.evaluator.evaluate(self.encoder, self.dl_ev,
                             self.gallery_dl, self.gnn, self.graph_generator, 
@@ -340,9 +390,14 @@ class Trainer():
                         torch.save(self.encoder.state_dict(),
                                    osp.join(self.save_folder_nets,
                                             self.fn + '.pth'))
+                        """
                         torch.save(self.gnn.state_dict(), 
                                 osp.join(self.save_folder_nets,
                                             'gnn_' + self.fn + '.pth'))
+                        """
+                        torch.save(self.finetuning_net.state_dict(),
+                                   osp.join(self.save_folder_nets,
+                                            'finetuning_' + self.fn + '.pth'))
 
         else:
             logger.info(
@@ -426,20 +481,48 @@ class Trainer():
     def get_loss_fn(self, params, num_classes):
         self.losses = defaultdict(list)
         self.losses_mean = defaultdict(list)
-        self.every = self.config['models']['gnn_params']['every']
+
+        # self.every = self.config['models']['gnn_params']['every']
+        self.every = self.config['models']['finetuning_net_params']['every']
         
+        self.loss_modes = params['fns'].split('_')
+
+        # Finetuning Loss
+        if 'finetuning' in self.loss_modes:
+            self.finetuning_loss = nn.CrossEntropyLoss().to(self.device)
+        elif 'lsfinetuning' in self.loss_modes:
+            self.finetuning_loss = losses.CrossEntropyLabelSmooth(
+                num_classes=num_classes, dev=self.device).to(self.device)
+        elif 'focalfinetuning' in self.loss_modes:
+            self.finetuning_loss = losses.FocalLoss().to(self.device)
+        else:
+            self.finetuning_loss = None
+
         # GNN loss
         if not self.every: # normal GNN loss
-            if 'gnn' in params['fns'].split('_'):
+            if 'gnn' in self.loss_modes:
                 self.gnn_loss = nn.CrossEntropyLoss().to(self.device)
-            elif 'lsgnn' in params['fns'].split('_'):
+                self.finetuning_loss = nn.CrossEntropyLoss().to(self.device)
+                
+            elif 'lsgnn' in self.loss_modes:
                 self.gnn_loss = losses.CrossEntropyLabelSmooth(
                     num_classes=num_classes, dev=self.device).to(self.device)
-            elif 'focalgnn' in params['fns'].split('_'):
+            elif 'focalgnn' in self.loss_modes:
                 self.gnn_loss = losses.FocalLoss().to(self.device)
             else:
                 self.gnn_loss = None
         
+        else: #  loss after every layer
+            if 'gnn' in self.loss_modes:
+                self.gnn_loss = [nn.CrossEntropyLoss().to(self.device) for
+                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])] 
+            elif 'lsgnn' in self.loss_modes:
+                use_gpu = False if self.device == torch.device('cpu') else True
+                self.gnn_loss = [losses.CrossEntropyLabelSmooth(
+                    num_classes=num_classes, dev=self.gnn_dev, use_gpu=use_gpu).to(self.device) for
+                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])]
+        # PHILIPP: where does gnn_dev come from?
+        """
         else: # GNN loss after every layer
             if 'gnn' in params['fns'].split('_'):
                 self.gnn_loss = [nn.CrossEntropyLoss().to(self.device) for
@@ -449,7 +532,7 @@ class Trainer():
                 self.gnn_loss = [losses.CrossEntropyLabelSmooth(
                     num_classes=num_classes, dev=self.gnn_dev, use_gpu=use_gpu).to(self.device) for
                         _ in range(self.config['models']['gnn_params']['gnn']['num_layers'])]
-
+        """
         # CrossEntropy Loss
         if 'lsce' in params['fns'].split('_'):
             use_gpu = False if self.device == torch.device('cpu') else True
@@ -532,7 +615,8 @@ class Trainer():
         config = {'num_layers': random.randint(1, 4)}
         config = {'num_heads': random.choice([1, 2, 4, 8])}
         
-        self.config['models']['gnn_params']['gnn'].update(config)
+        self.config['models']['finetuning_net_params']['finetuning'].update(config)
+        # self.config['models']['gnn_params']['gnn'].update(config)
 
         logger.info("Updated Hyperparameters:")
         logger.info(self.config)
