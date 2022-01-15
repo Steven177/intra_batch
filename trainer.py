@@ -78,7 +78,8 @@ class Trainer():
             
             self.encoder = self.encoder.to(self.device) 
             
-            self.finetuning_net = net.FinetuningNetwork(sz_embed.to(self.device), self.device, self.config['finetuning_net_params'], num_layers=self.config['finetuning_net_params']['finetuning']['num_layers'])
+            finetuning_net_params = self.config['models']['finetuning_net_params']
+            self.finetuning_net = net.FinetuningNetwork(sz_embed, self.device, finetuning_net_params , num_layers=finetuning_net_params['finetuning']['num_layers']).to(self.device)
 
             # In case of pretrained network
             if self.config['models']['finetuning_net_params']['pretrained_path'] != "no":
@@ -292,7 +293,7 @@ class Trainer():
         
         # LOSS AFTER SECOND NETWORK
         # Compute CE loss
-        if self.loss_finetuning:
+        if self.finetuning_loss:
             loss_finetuning = self.gnn_loss(predicted/self.config['train_params']['temperatur'], Y)
             loss += train_params['loss_fn']['scaling_gnn'] * loss_finetuning
             self.losses['Cross Entropy2'].append(loss.item())

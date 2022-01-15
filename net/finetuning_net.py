@@ -26,7 +26,7 @@ class FinetuningNetwork(nn.Module):
         return out
 
 class FinetuningLayer(torch.nn.Module):
-    def __init__(self, dev, params: dict = None, embed_dim: int = 2048):
+    def __init__(self, dev, params: dict = None, embed_dim: int = 2048, d_hid=None):
         super(FinetuningLayer, self).__init__()
         self.dev = dev
         self.params = params
