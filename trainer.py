@@ -177,7 +177,7 @@ class Trainer():
                         'gnn_' + self.fn + '.pth')))
                     """
                     self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'finetuning_net_' + self.fn + '.pth')))
+                        'finetuning_' + self.fn + '.pth')))
 
                     for g in self.opt.param_groups:
                         g['lr'] = train_params['lr'] / 10.
@@ -189,7 +189,7 @@ class Trainer():
                         'gnn_' + self.fn + '.pth')))
                     """
                     self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'finetuning_net_' + self.fn + '.pth')))
+                        'finetuning_' + self.fn + '.pth')))
 
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
