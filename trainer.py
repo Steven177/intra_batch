@@ -142,8 +142,8 @@ class Trainer():
                 os.rename(osp.join(self.save_folder_nets, self.fn + '.pth'),
                           osp.join(self.save_folder_nets_final, str(best_recall_iter) + mode + self.net_type + '_' +
                           self.dataset_short + '.pth'))
-                os.rename(osp.join(self.save_folder_nets, 'gnn_' + self.fn + '.pth'),
-                          osp.join(self.save_folder_nets_final, str(best_recall_iter) + 'gnn_' + mode + self.net_type + '_' +
+                os.rename(osp.join(self.save_folder_nets, 'finetuning_' + self.fn + '.pth'),
+                          osp.join(self.save_folder_nets_final, str(best_recall_iter) + 'finetuning_' + mode + self.net_type + '_' +
                           self.dataset_short + '.pth'))
                 best_recall = best_recall_iter
             elif 'test' in self.config['mode'].split('_'):
