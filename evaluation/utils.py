@@ -133,7 +133,7 @@ class Evaluator_DML():
         # print(fc7s[0].shape)
         #fc7 = torch.cat([f.unsqueeze(0).cpu() for b in fc7s for f in b], 0)
         
-        return torch.squeeze(fc7)
+        return torch.squeeze(fc7.cpu())
 
     def predict_batchwise_gnn(self, gnn, graph_generator, X, T, P, dl_ev_gnn, mode, X_G=None, P_G=None):
         logger.info("KNN")
