@@ -120,11 +120,11 @@ class Evaluator_DML():
 
         fc7s = list()
         with torch.no_grad():
-            for X, _, _, _ in dataloader:
-                if torch.cuda.is_available(): X = X.to(self.dev)
-                fc7 = finetuning_net(X)
+            #for X, _, _, _ in dataloader:
+            if torch.cuda.is_available(): X = X.to(self.dev)
+            fc7 = finetuning_net(X)
                 
-                fc7s.append(fc7)
+            fc7s.append(fc7)
                 
         fc7 = torch.cat([f.unsqueeze(0).cpu() for b in fc7s for f in b], 0)
         
