@@ -124,7 +124,6 @@ class Evaluator_DML():
             if torch.cuda.is_available(): X = X.to(self.dev)
             _, fc7 = finetuning_net(X)
             fc7 = fc7[-1]
-            print(fc7.shape)
                 
                 
         # print(len(fc7s))
