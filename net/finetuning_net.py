@@ -10,8 +10,8 @@ class FinetuningNetwork(nn.Module):
         num_classes = finetuning_params['classifier']['num_classes']
         layers = [FinetuningLayer(dev, finetuning_params, embed_dim) for _ in range(num_layers)]
         self.layers = Sequential(*layers)
-        self.batchnorm = nn.BatchNorm1d(embed_dim))
-        self.linear = nn.Linear(embed_dim, num_classes))
+        self.batchnorm = nn.BatchNorm1d(embed_dim)
+        self.linear = nn.Linear(embed_dim, num_classes)
         """"
         layers[-2].bias.requires_grad_(False)
         layers[-2].apply(weights_init_kaiming)
