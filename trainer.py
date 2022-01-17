@@ -366,9 +366,9 @@ class Trainer():
                             nb_classes=self.config['dataset']['num_classes'])
                 
                 # ASK PHILIPP
-                elif self.config['mode'] == 'finetuning':
+                elif 'finetuning' in self.config['mode'].split('_'):
                     mAP, top = self.evaluator.evaluate(self.encoder, self.dl_ev,
-                            self.gallery_dl, self.finetuning_net, 
+                            self.gallery_dl, finetuning_net=self.finetuning_net, 
                             dl_ev_gnn=self.dl_ev_gnn, net_type=self.net_type,
                             dataroot=self.config['dataset']['dataset_short'],
                             nb_classes=self.config['dataset']['num_classes'])      
