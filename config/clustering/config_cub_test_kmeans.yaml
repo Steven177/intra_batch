@@ -1,4 +1,4 @@
-mode: "mutualinformation_test" #train/test/hyper_search/pretraining
+mode: "cluster_test" #train/test/hyper_search/pretraining
 application: "DML"
 output_paht: "."
 
