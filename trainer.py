@@ -371,8 +371,7 @@ class Trainer():
                             self.gallery_dl, finetuning_net=self.finetuning_net, 
                             dl_ev_gnn=self.dl_ev_gnn, net_type=self.net_type,
                             dataroot=self.config['dataset']['dataset_short'],
-                            nb_classes=self.config['dataset']['num_classes'],
-                            finetuning=eval_params['use_finetuning_network_during_evaluation'])      
+                            nb_classes=self.config['dataset']['num_classes'])      
                 # # ASK PHILIPP
 
                 else: # all other modes that involve gnn during test time  

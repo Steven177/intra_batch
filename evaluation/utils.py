@@ -14,17 +14,18 @@ logger = logging.getLogger('GNNReID.Evaluator')
 
 
 class Evaluator_DML():
-    def __init__(self, output_test_enc='norm', output_test_gnn='norm', cat=0, nb_clusters=0, dev=0, softmax_temperature=None):
+    def __init__(self, output_test_enc='norm', output_test_gnn='norm', cat=0, nb_clusters=0, dev=0, softmax_temperature=None, use_finetuning_network_during_evaluation=False):
         
         self.nb_clusters = nb_clusters
         self.output_test_enc = output_test_enc
         self.output_test_gnn = output_test_gnn
         self.cat = cat
         self.dev = dev
+        self.use_finetuning_network_during_evaluation = use_finetuning_network_during_evaluation
 
     def evaluate(self, model, dataloader, gallery_dl,
             gnn=None, graph_generator=None, dl_ev_gnn=None, finetuning_net=None, net_type='bn_inception',
-            dataroot='CARS', nb_classes=None, finetuning=False):
+            dataroot='CARS', nb_classes=None):
         self.dataroot = dataroot
         
         self.gallery_dl = gallery_dl
@@ -38,12 +39,12 @@ class Evaluator_DML():
         if dataroot == 'in_shop':
             gallery_X, gallery_T, gallery_P = self.predict_batchwise(model, gallery_dl)
         
-        mode = self.get_mode(dl_ev_gnn, dataloader) if not finetuning else 'finetuning'
+        mode = self.get_mode(dl_ev_gnn, dataloader) if not self.use_finetuning_network_during_evaluation else 'finetuning'
 
         if mode == 'finetuning':
             finetuning_net.eval()
             logger.info("Evaluate KNN evaluate")
-            X = self.predict_batchwise_finetuning(finetuning_net, X, T, P, dl_ev, mode)
+            X = self.predict_batchwise_finetuning(finetuning_net, X, T, P, dataloader, mode)
 
         if mode is not 'backbone' and dataroot != 'in_shop':
             gnn_is_training = gnn.training
