@@ -26,7 +26,7 @@ class FinetuningNetwork(nn.Module):
             out.append(feats)
         
         # See forward() of GnnReID for this
-        feats = [feats[-1]]
+        feats = [out[-1]]
         print(feats[-1].shape)
         feats = [self.batchnorm(feats[-1])]
         x = [self.linear(feats[-1])]
