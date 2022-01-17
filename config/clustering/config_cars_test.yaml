@@ -1,4 +1,4 @@
-mode: "cluster_test" 
+mode: "test" 
 application: "DML"
 output_paht: "."
 
