@@ -208,32 +208,59 @@ class DotAttentionLayer(nn.Module):
     
     def forward(self, feats, egde_index, edge_attr):
         if self.prenorm:
-            feats = self.norm1(feats) if self.norm1 is not None else feats
+            # Layer 1
+            if self.norm1:
+                feats2 = self.norm1(feats)
+            else:
+                feats2 = feats
 
-        if self.att:
-            feats2  = self.att(feats, egde_index, edge_attr)
+            if self.att:
+                feats2  = self.att(feats2, egde_index, edge_attr)
+            
+            feats2 = self.dropout1(feats2)
+            if self.res1:
+                feats = feats + feats2
+            else:
+                feats = feats2
+
+            # Layer 2
+            if self.norm2:
+                feats2 = self.norm2(feats)
+            else:
+                feats2 = feats
+            if self.mlp:
+                feats2 = self.linear2(self.dropout(self.act(self.linear1(feats2))))
+            
+            feats2 = self.dropout2(feats2)
+            if self.res2:
+                feats = feats + feats2
+            else:
+                feats = feats2
         else:
-            feats2 = feats
-        # if gradient checkpointing should be apllied for the gnn, comment line above and uncomment line below
-        #feats2 = checkpoint.checkpoint(self.custom(), feats, egde_index, edge_attr, preserve_rng_state=True)
+            # Layer 1
+            if self.att:
+                feats2  = self.att(feats, egde_index, edge_attr)
+            else:
+                feats2 = feats
 
-        feats2 = self.dropout1(feats2)
-        feats = feats + feats2 if self.res1 else feats2
-        if not self.prenorm:
-            feats = self.norm1(feats) if self.norm1 is not None else feats
-
-        if self.mlp:
-            feats2 = self.linear2(self.dropout(self.act(self.linear1(feats))))
-        else:
-            feats2 = feats
-
-        if self.prenorm:
-            feats = self.norm2(feats) if self.norm2 is not None else feats
-        feats2 = self.dropout2(feats2)
-        feats = feats + feats2 if self.res2 else feats2
-        if not self.prenorm:
-            feats = self.norm2(feats) if self.norm2 is not None else feats
-
+            feats2 = self.dropout1(feats2)
+            if self.res1:
+                feats = feats + feats2
+            else:
+                feats = feats2
+            
+            if self.norm1:
+                feats = self.norm1(feats)
+            # Layer 2
+            if self.mlp:
+                feats2 = self.linear2(self.dropout(self.act(self.linear1(feats))))
+            else:
+                feats2 = feats
+            feats2 = self.dropout2(feats2)
+            if self.res2:
+                feats = feats + feats2
+            else:
+                feats = feats2
+            if self.norm2:
+                feats = self.norm2(feats)
         return feats, egde_index, edge_attr
-
-
