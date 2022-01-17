@@ -24,7 +24,7 @@ class Evaluator_DML():
 
     def evaluate(self, model, dataloader, gallery_dl,
             gnn=None, graph_generator=None, dl_ev_gnn=None, finetuning_net=None, net_type='bn_inception',
-            dataroot='CARS', nb_classes=None):
+            dataroot='CARS', nb_classes=None, finetuning=False):
         self.dataroot = dataroot
         
         self.gallery_dl = gallery_dl
@@ -38,7 +38,7 @@ class Evaluator_DML():
         if dataroot == 'in_shop':
             gallery_X, gallery_T, gallery_P = self.predict_batchwise(model, gallery_dl)
         
-        mode = self.get_mode(dl_ev_gnn, dataloader)
+        mode = self.get_mode(dl_ev_gnn, dataloader) if not finetuning else 'finetuning'
 
         if mode == 'finetuning':
             finetuning_net.eval()

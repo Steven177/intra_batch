@@ -104,7 +104,8 @@ eval_params:
   cat: 0
   output_test_enc: "plain"
   output_test_gnn: "plain"
-  
+  use_finetuning_network_during_evaluation: 0
+
   
 
 

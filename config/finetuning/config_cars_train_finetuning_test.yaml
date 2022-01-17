@@ -29,6 +29,9 @@ models:
       dropout_1: 0.1
       dropout_2: 0.1
 
+    classifier:
+      num_classes: 100
+
   gnn_params:
     pretrained_path: "no" 
     red: 1
@@ -101,4 +104,4 @@ eval_params:
   output_test_enc: "plain"
   output_test_gnn: "plain"
   cat: 0
-  use_finetuning_network_during_evaluation: 0
+  use_finetuning_network_during_evaluation: 1
