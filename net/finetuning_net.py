@@ -9,9 +9,9 @@ class FinetuningNetwork(nn.Module):
         
         num_classes = finetuning_params['classifier']['num_classes']
         layers = [FinetuningLayer(dev, finetuning_params, embed_dim) for _ in range(num_layers)]
-        layers.append(nn.BatchNorm1d(embed_dim))
-        layers.append(nn.Linear(embed_dim, num_classes))
         self.layers = Sequential(*layers)
+        self.batchnorm = nn.BatchNorm1d(embed_dim))
+        self.linear = nn.Linear(embed_dim, num_classes))
         """"
         layers[-2].bias.requires_grad_(False)
         layers[-2].apply(weights_init_kaiming)
@@ -19,11 +19,20 @@ class FinetuningNetwork(nn.Module):
         """
         
     def forward(self, feats):
-        out = list()
+        x, out = list(), list()
+        
         for layer in self.layers:
             feats = layer(feats)
             out.append(feats)
-        return out
+        
+        # See forward() of GnnReID for this
+        feats = [feats[-1]]
+        feats = [self.batchnorm(feats[-1])]
+        x = [self.linear(feats[-1])]
+
+        # Gnn also normalizes feats
+        feats = [F.normalize(f, p=2, dim=1) for f in feats]
+        return x, feats
 
 class FinetuningLayer(torch.nn.Module):
     def __init__(self, dev, params: dict = None, embed_dim: int = 2048, d_hid=None):
