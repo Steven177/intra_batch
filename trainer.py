@@ -289,12 +289,12 @@ class Trainer():
         
         # Forward step of finetuning net
         if self.finetuning_loss:
-            predicted = self.finetuning_net(fc7)
+            pred, feats = self.finetuning_net(fc7)
         
         # LOSS AFTER SECOND NETWORK
         # Compute CE loss
         if self.finetuning_loss:
-            loss_finetuning = self.finetuning_loss(predicted[-1]/self.config['train_params']['temperatur'], Y)
+            loss_finetuning = self.finetuning_loss(pred[-1]/self.config['train_params']['temperatur'], Y)
             loss += train_params['loss_fn']['scaling_gnn'] * loss_finetuning
             self.losses['Cross Entropy2'].append(loss.item())
 
