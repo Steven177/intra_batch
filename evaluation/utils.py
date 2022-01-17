@@ -46,7 +46,7 @@ class Evaluator_DML():
             logger.info("Evaluate KNN evaluate")
             X = self.predict_batchwise_finetuning(finetuning_net, X, T, P, dataloader, mode)
 
-        if mode is not 'backbone' and dataroot != 'in_shop':
+        if mode is not 'backbone' and mode is not 'finetuning' and dataroot != 'in_shop':
             gnn_is_training = gnn.training
             gnn.eval()
             logger.info("Evaluate KNN evaluate")
