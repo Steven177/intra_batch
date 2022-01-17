@@ -122,7 +122,7 @@ class Evaluator_DML():
         with torch.no_grad():
             for X, _, _, _ in dataloader:
                 if torch.cuda.is_available(): X = X.to(self.dev)
-                fc7 = finetuning_net(X, output_option=self.output_test_enc, val=True)
+                fc7 = finetuning_net(X)
                 
                 fc7s.append(fc7)
                 
