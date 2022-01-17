@@ -127,7 +127,9 @@ class Evaluator_DML():
             fc7s.append(fc7)
                 
         print(len(fc7s))
-        print(fc7s[0].shape)
+
+        print(fc7.shape)
+        # print(fc7s[0].shape)
         #fc7 = torch.cat([f.unsqueeze(0).cpu() for b in fc7s for f in b], 0)
         fc7 = fc7.unsqueeze(0).cpu()
         
