@@ -4,7 +4,7 @@ output_paht: "."
 
 models:
   encoder_params:
-    pretrained_path: "best_weights/0.7079675894665767resnet50_cub.pth" 
+    pretrained_path: "weights_for_StPh/0.6893990546927752resnet50_cub.pth" 
     net_type: "resnet50"
     neck: 0
     last_stride: 0
@@ -14,7 +14,7 @@ models:
       sz_embedding: 512
 
   gnn_params:
-    pretrained_path: "best_weights/0.7079675894665767gnn_resnet50_cub.pth"
+    pretrained_path: "weights_for_StPh/0.6893990546927752gnn_resnet50_cub.pth"
     red: 1
     cat: 0
     every: 0
