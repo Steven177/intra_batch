@@ -21,7 +21,7 @@ def create_loaders(data_root, num_workers, num_classes_iter=None,
 
     dl_tr = get_train_loaders(data_root, num_workers, size_batch, 
             num_classes_iter=num_classes_iter, num_elements_class=num_elements_class, 
-            trans=trans, num_classes=num_classes, net_type=net_type, bssampling=bssampling, random=random)
+            trans=trans, num_classes=num_classes, net_type=net_type, bssampling=bssampling, mode=mode, random=random)
     
     if os.path.basename(data_root) != 'In_shop':
         dl_ev, dl_ev_gnn = get_val_loaders(data_root, num_workers, size_batch, 
@@ -36,7 +36,7 @@ def create_loaders(data_root, num_workers, num_classes_iter=None,
 
 def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                    num_elements_class=None, trans='norm', num_classes=None, 
-                   net_type='resnet50', bssampling=None, random=False):
+                   net_type='resnet50', bssampling=None, mode='train', random=False):
     # Train Dataset
     if os.path.basename(data_root) != 'In_shop':
         Dataset = dataset.Birds_DML(
@@ -51,15 +51,40 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                     transform = trans,
                     net_type=net_type) 
 
-    list_of_indices_for_each_class = get_list_of_inds(Dataset)
-
-    sampler = CombineSampler(list_of_indices_for_each_class,
-                            num_classes_iter, num_elements_class,
-                            batch_sampler=bssampling)
     drop_last = True
     if random:
         sampler = RandomSampler(Dataset)
-    dl_tr = torch.utils.data.DataLoader(
+        dl_tr = torch.utils.data.DataLoader(
+            Dataset,
+            batch_size=size_batch,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=num_workers,
+            drop_last=drop_last,
+            pin_memory=True)
+        return dl_tr
+
+
+    if 'cluster' in mode.split('_'):
+        
+        sampler = ClusterSampler(num_classes_iter, num_elements_class)
+
+        dl_tr = torch.utils.data.DataLoader(
+            Dataset,
+            batch_size=size_batch, #size_batch,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=1,
+            drop_last=True,
+            pin_memory=True)
+
+    else:
+        list_of_indices_for_each_class = get_list_of_inds(Dataset)
+
+        sampler = CombineSampler(list_of_indices_for_each_class,
+                                num_classes_iter, num_elements_class,
+                                batch_sampler=bssampling)
+        dl_tr = torch.utils.data.DataLoader(
         Dataset,
         batch_size=size_batch,
         shuffle=False,
