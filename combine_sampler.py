@@ -224,7 +224,7 @@ class KReciprocalSamplerInshop(Sampler):
         if self.sampler:
             self.num_classes, self.num_samples = self.sampler.sample()
             self.bs = self.num_classes * self.num_samples
-            quality_checker.num_samples = self.bs
+            # quality_checker.num_samples = self.bs
 
         if type(self.feature_dict_query[list(self.feature_dict_query.keys())[0]]) == dict:
             x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict_query.keys() for f in self.feature_dict_query[k].values()], 0)
@@ -368,7 +368,6 @@ class ClusterSampler(Sampler):
         if self.sampler:
             self.cl_b, self.n_cl = self.sampler.sample()
             #quality_checker.num_samps=self.n_cl
-        # if self.epoch % 5 == 1:
         self.get_clusters()
         
         ddict = defaultdict(list)
