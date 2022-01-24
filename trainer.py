@@ -173,8 +173,9 @@ class Trainer():
 
                 # Create feature dict
                 if self.config['mode'] == 'cluster_train': # and self.epoch % 5 == 0:
-                    assert isinstance(self.dl_tr, tuple), f'Only only train dataloader provided, two needed'
-                    self.dl_encoding, self.dl_tr = self.dl_tr
+                    if self.epoch == 0:
+                        assert isinstance(self.dl_tr, tuple), f'Only only train dataloader provided, two needed'
+                        self.dl_encoding, self.dl_tr = self.dl_tr
                     fc7s, Ys, paths = list(), list(), list()
                     with torch.no_grad():
                         for X, Y, I, P in tqdm(self.dl_encoding):
