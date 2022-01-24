@@ -175,7 +175,7 @@ class Trainer():
                 if self.config['mode'] == 'cluster_train': # and self.epoch % 5 == 0:
                     assert isinstance(self.dl_tr, tuple), f'Only only train dataloader provided, two needed'
                     self.dl_encoding, self.dl_tr = self.dl_tr
-                    fc7s, Ys = list(), list()
+                    fc7s, Ys, paths = list(), list(), list()
                     with torch.no_grad():
                         for X, Y, I, P in self.dl_encoding:
                             if torch.cuda.is_available(): X = X.to(self.device)
