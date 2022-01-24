@@ -173,7 +173,7 @@ class Trainer():
 
                 # Create feature dict
                 if self.config['mode'] == 'cluster_train': # and self.epoch % 5 == 0:
-                    if self.epoch == 0:
+                    if e == 0:
                         assert isinstance(self.dl_tr, tuple), f'Only only train dataloader provided, two needed'
                         self.dl_encoding, self.dl_tr = self.dl_tr
                     fc7s, Ys, paths = list(), list(), list()
