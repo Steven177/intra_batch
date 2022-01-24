@@ -65,11 +65,25 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
         return dl_tr
 
 
+    list_of_indices_for_each_class = get_list_of_inds(Dataset)
+
+    sampler = CombineSampler(list_of_indices_for_each_class,
+                            num_classes_iter, num_elements_class,
+                            batch_sampler=bssampling)
+    dl_tr = torch.utils.data.DataLoader(
+    Dataset,
+    batch_size=size_batch,
+    shuffle=False,
+    sampler=sampler,
+    num_workers=num_workers,
+    drop_last=drop_last,
+    pin_memory=True)
+
     if 'cluster' in mode.split('_'):
         
         sampler = ClusterSampler(num_classes_iter, num_elements_class)
 
-        dl_tr = torch.utils.data.DataLoader(
+        dl_tr_cluster = torch.utils.data.DataLoader(
             Dataset,
             batch_size=size_batch, #size_batch,
             shuffle=False,
@@ -78,20 +92,8 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
             drop_last=True,
             pin_memory=True)
 
-    else:
-        list_of_indices_for_each_class = get_list_of_inds(Dataset)
+        return dl_tr, dl_tr_cluster
 
-        sampler = CombineSampler(list_of_indices_for_each_class,
-                                num_classes_iter, num_elements_class,
-                                batch_sampler=bssampling)
-        dl_tr = torch.utils.data.DataLoader(
-        Dataset,
-        batch_size=size_batch,
-        shuffle=False,
-        sampler=sampler,
-        num_workers=num_workers,
-        drop_last=drop_last,
-        pin_memory=True)
     
     return dl_tr
 

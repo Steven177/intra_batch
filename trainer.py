@@ -171,6 +171,30 @@ class Trainer():
                     for g in self.opt.param_groups:
                         g['lr'] = train_params['lr'] / 10.
 
+                # Create feature dict
+                if self.config['mode'] == 'cluster_train': # and self.epoch % 5 == 0:
+                    assert isinstance(self.dl_tr, tuple), f'Only only train dataloader provided, two needed'
+                    self.dl_encoding, self.dl_tr = self.dl_tr
+                    fc7s, Ys = list(), list()
+                    with torch.no_grad():
+                        for X, Y, I, P in self.dl_encoding:
+                            if torch.cuda.is_available(): X = X.to(self.dev)
+                            # _, fc7 = model(X, output_option=self.output_test_enc, val=True)
+                            probs, fc7 = self.encoder(x.to(self.device), output_option=train_params['output_train_enc'], val=True)
+                            fc7s.append(fc7)
+                            Ys.append(Y)
+                            paths.append(P)
+                                
+                    fc7 = torch.cat([f.unsqueeze(0).cpu() for b in fc7s for f in b], 0)
+                    Y = torch.cat([y.unsqueeze(0).cpu() for b in Ys for y in b], 0)
+                    paths = [p for b in paths for p in b]
+                            
+                    fc7, y, paths = torch.squeeze(fc7), torch.squeeze(Y), paths
+
+                    pti = self.dl_tr.dataset.path_to_ind
+                    feature_dict = {pti[p]: f for p, f in zip(P, X)}
+                    self.dl_tr.sampler.feature_dict = feature_dict
+
                 # Normal training with backpropagation
                 for x, Y, I, P in tqdm(self.dl_tr):
                     loss = self.forward_pass(x, Y, I, P, train_params)
