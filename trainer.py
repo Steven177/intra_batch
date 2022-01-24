@@ -189,10 +189,10 @@ class Trainer():
                     Y = torch.cat([y.unsqueeze(0).cpu() for b in Ys for y in b], 0)
                     paths = [p for b in paths for p in b]
                             
-                    fc7, y, paths = torch.squeeze(fc7), torch.squeeze(Y), paths
+                    fc7, y  = torch.squeeze(fc7), torch.squeeze(Y) 
 
                     pti = self.dl_tr.dataset.path_to_ind
-                    feature_dict = {pti[p]: f for p, f in zip(P, X)}
+                    feature_dict = {pti[p]: f for p, f in zip(paths, X)}
                     self.dl_tr.sampler.feature_dict = feature_dict
 
                 # Normal training with backpropagation
