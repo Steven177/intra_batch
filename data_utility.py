@@ -1,7 +1,8 @@
+from random import Random
 import dataset
 import torch
 from collections import defaultdict
-from combine_sampler import CombineSampler, KReciprocalSampler, KReciprocalSamplerInshop, ClusterSampler, MutualInformationSampler
+from combine_sampler import CombineSampler, KReciprocalSampler, KReciprocalSamplerInshop, ClusterSampler, MutualInformationSampler, RandomSampler
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -13,17 +14,19 @@ logger = logging.getLogger('GNNReID.DataUtility')
 
 def create_loaders(data_root, num_workers, num_classes_iter=None,
                    num_elements_class=None, trans='norm', num_classes=None, 
-                   net_type='resnet50', bssampling=None, mode='train'):
+                   net_type='resnet50', bssampling=None, mode='train', train_params=None):
     size_batch = num_classes_iter * num_elements_class
     
+    random = train_params['sampling'] == 'random'
+
     dl_tr = get_train_loaders(data_root, num_workers, size_batch, 
             num_classes_iter=num_classes_iter, num_elements_class=num_elements_class, 
-            trans=trans, num_classes=num_classes, net_type=net_type, bssampling=bssampling)
+            trans=trans, num_classes=num_classes, net_type=net_type, bssampling=bssampling, random=random)
     
     if os.path.basename(data_root) != 'In_shop':
         dl_ev, dl_ev_gnn = get_val_loaders(data_root, num_workers, size_batch, 
                 num_classes_iter=num_classes_iter, num_elements_class=num_elements_class, 
-                trans=trans, num_classes=num_classes, net_type=net_type, mode=mode)
+                trans=trans, num_classes=num_classes, net_type=net_type, mode=mode, random=random)
         return dl_tr, dl_ev, None, dl_ev_gnn
     else:
         dl_gallery, dl_query, dl_ev_gnn = get_inshop_val_loader(data_root, num_workers, 
@@ -33,7 +36,7 @@ def create_loaders(data_root, num_workers, num_classes_iter=None,
 
 def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                    num_elements_class=None, trans='norm', num_classes=None, 
-                   net_type='resnet50', bssampling=None):
+                   net_type='resnet50', bssampling=None, random=False):
     # Train Dataset
     if os.path.basename(data_root) != 'In_shop':
         Dataset = dataset.Birds_DML(
@@ -54,7 +57,8 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                             num_classes_iter, num_elements_class,
                             batch_sampler=bssampling)
     drop_last = True
-
+    if random:
+        sampler = RandomSampler(Dataset)
     dl_tr = torch.utils.data.DataLoader(
         Dataset,
         batch_size=size_batch,
@@ -69,7 +73,7 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
 
 def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                    num_elements_class=None, trans='norm', magnitude=15,
-                   number_aug=0, num_classes=None, net_type='resnet50', mode='train'):
+                   number_aug=0, num_classes=None, net_type='resnet50', mode='train', random=False):
     # Evaluation Dataset
     if data_root == 'Stanford':
         class_end = 2 * num_classes - 2
@@ -82,6 +86,8 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
         transform=trans,
         eval_reid=True,
         net_type=net_type)
+    
+    size_batch = num_classes_iter * num_elements_class
 
     if 'gnn' in mode.split('_'):
         
@@ -165,6 +171,27 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
             num_workers=1,
             pin_memory=True)
 
+    elif random:
+        
+        sampler = RandomSampler(dataset_ev) #(num_classes_iter, num_elements_class)
+
+        dl_ev_gnn = torch.utils.data.DataLoader(
+            dataset_ev,
+            batch_size=size_batch, #size_batch,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=1,
+            drop_last=True,
+            pin_memory=True)
+
+        dl_ev = torch.utils.data.DataLoader(
+            copy.deepcopy(dataset_ev),
+            batch_size=size_batch,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=1,
+            drop_last=True,
+            pin_memory=True)
     else:
         dl_ev = torch.utils.data.DataLoader(
             dataset_ev,

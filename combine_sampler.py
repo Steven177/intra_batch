@@ -70,6 +70,19 @@ class CombineSampler(Sampler):
     def __len__(self):
         return len(self.flat_list)
 
+class RandomSampler(Sampler):
+    def __init__(self, dataset):
+        logger.info("Random Sampler")
+        self.dataset = dataset
+        self.linds = list(range(len(self.dataset.ys)))
+
+    def __iter__(self):
+        random.shuffle(self.linds)
+        return iter(self.linds)
+
+    def __len__(self) -> int:
+        return len(self.linds)
+
 
 class NumberSampler():
     def __init__(self, num_classes, num_samples, seed=None):
