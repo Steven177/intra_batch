@@ -177,7 +177,7 @@ class Trainer():
                     self.dl_encoding, self.dl_tr = self.dl_tr
                     fc7s, Ys, paths = list(), list(), list()
                     with torch.no_grad():
-                        for X, Y, I, P in self.dl_encoding:
+                        for X, Y, I, P in tqdm(self.dl_encoding):
                             if torch.cuda.is_available(): X = X.to(self.device)
                             # _, fc7 = model(X, output_option=self.output_test_enc, val=True)
                             probs, fc7 = self.encoder(X, output_option=train_params['output_train_enc'], val=True)
