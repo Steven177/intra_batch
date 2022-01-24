@@ -23,6 +23,8 @@ models:
       aggregator: "add"
       num_heads: 8 
       attention: "dot" 
+      prenorm: 0
+      att: 1
       mlp: 1
       dropout_mlp: 0.1
       norm1: 1
