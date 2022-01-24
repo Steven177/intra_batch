@@ -522,6 +522,6 @@ class Trainer():
                 num_classes=self.config['dataset']['num_classes'], 
                 net_type=self.net_type,
                 bssampling=self.config['dataset']['bssampling'],
-                mode=mode)
+                mode=mode, train_params=train_params)
         
         self.dl_tr, self.dl_ev, self.gallery_dl, self.dl_ev_gnn = loaders
