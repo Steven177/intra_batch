@@ -17,7 +17,7 @@ def create_loaders(data_root, num_workers, num_classes_iter=None,
                    net_type='resnet50', bssampling=None, mode='train', train_params=None):
     size_batch = num_classes_iter * num_elements_class
     
-    random = train_params['sampling'] == 'random'
+    random = train_params['sampling'] == 'random' if 'sampling' in train_params else False
 
     dl_tr = get_train_loaders(data_root, num_workers, size_batch, 
             num_classes_iter=num_classes_iter, num_elements_class=num_elements_class, 
