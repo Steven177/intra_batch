@@ -414,7 +414,7 @@ class ClusterSampler(Sampler):
 
 
 class MutualInformationSampler(Sampler):
-    def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None):
+    def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None, softmax_temperature=None):
         logger.info('Mutual Information Sampler')
         # kmeans
         self.feature_dict = None
@@ -423,6 +423,8 @@ class MutualInformationSampler(Sampler):
         self.n_cl = num_samples
         self.epoch = 0
         self.nb_clusters = nb_clusters
+        self.softmax_temperature = softmax_temperature if softmax_temperature is  None else 1
+
 
         if batch_sampler == 'NumberSampler':
             self.sampler = NumberSampler(num_classes, num_samples)
@@ -443,7 +445,7 @@ class MutualInformationSampler(Sampler):
             self.indices = [k for k in self.feature_dict.keys()]
         
         print(f' x : {x.shape}')
-        prob_x = torch.nn.functional.softmax(x, dim=0)
+        prob_x = torch.nn.functional.softmax(x/self.softmax_temperature, dim=0)
         print(f' prob x : {prob_x.shape}')
         print(f' prob x numpy : {prob_x.numpy().shape}')
 

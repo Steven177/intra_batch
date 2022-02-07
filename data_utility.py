@@ -14,7 +14,7 @@ logger = logging.getLogger('GNNReID.DataUtility')
 
 def create_loaders(data_root, num_workers, num_classes_iter=None,
                    num_elements_class=None, trans='norm', num_classes=None, 
-                   net_type='resnet50', bssampling=None, mode='train', train_params=None):
+                   net_type='resnet50', bssampling=None, mode='train', train_params=None, eval_params=None):
     size_batch = num_classes_iter * num_elements_class
     
     random = train_params['sampling'] == 'random' if 'sampling' in train_params else False
@@ -26,7 +26,7 @@ def create_loaders(data_root, num_workers, num_classes_iter=None,
     if os.path.basename(data_root) != 'In_shop':
         dl_ev, dl_ev_gnn = get_val_loaders(data_root, num_workers, size_batch, 
                 num_classes_iter=num_classes_iter, num_elements_class=num_elements_class, 
-                trans=trans, num_classes=num_classes, net_type=net_type, mode=mode, random=random)
+                trans=trans, num_classes=num_classes, net_type=net_type, mode=mode, random=random, eval_params=eval_params)
         return dl_tr, dl_ev, None, dl_ev_gnn
     else:
         dl_gallery, dl_query, dl_ev_gnn = get_inshop_val_loader(data_root, num_workers, 
@@ -73,7 +73,7 @@ def get_train_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
 
 def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
                    num_elements_class=None, trans='norm', magnitude=15,
-                   number_aug=0, num_classes=None, net_type='resnet50', mode='train', random=False):
+                   number_aug=0, num_classes=None, net_type='resnet50', mode='train', random=False, eval_params=None):
     # Evaluation Dataset
     if data_root == 'Stanford':
         class_end = 2 * num_classes - 2
@@ -112,8 +112,8 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
             pin_memory=True)
 
     elif 'pseudo' in mode.split('_'):
-        
         sampler = KReciprocalSampler(1, 7) #(num_classes_iter, num_elements_class)
+
 
         dl_ev_gnn = torch.utils.data.DataLoader(
             dataset_ev,
@@ -154,6 +154,9 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
     elif 'mutualinformation' in mode.split('_'):
         
         sampler = MutualInformationSampler(1, 7) #(num_classes_iter, num_elements_class)
+        if eval_params is not None:
+            softmax_temperature = eval_params['softmax_temperature'] if 'softmax_temperature' in eval_params else None
+            sampler = MutualInformationSampler(1, 7, softmax_temperature=softmax_temperature) #(num_classes_iter, num_elements_class)
 
         dl_ev_gnn = torch.utils.data.DataLoader(
             dataset_ev,

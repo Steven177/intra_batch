@@ -110,7 +110,7 @@ class Trainer():
             if torch.cuda.device_count() > 1:
                 self.encoder = nn.DataParallel(self.encoder)
 
-            self.get_data(self.config['dataset'], self.config['train_params'],
+            self.get_data(self.config['dataset'], self.config['train_params'], self.config['eval_params'],
                           self.config['mode'])
 
             best_recall_iter, model = self.execute(
@@ -512,7 +512,7 @@ class Trainer():
         logger.info("Updated Hyperparameters:")
         logger.info(self.config)
 
-    def get_data(self, config, train_params, mode):
+    def get_data(self, config, train_params, eval_params, mode):
         loaders = data_utility.create_loaders(
                 data_root=config['dataset_path'],
                 num_workers=config['nb_workers'],
@@ -522,6 +522,6 @@ class Trainer():
                 num_classes=self.config['dataset']['num_classes'], 
                 net_type=self.net_type,
                 bssampling=self.config['dataset']['bssampling'],
-                mode=mode, train_params=train_params)
+                mode=mode, train_params=train_params, eval_params=eval_params)
         
         self.dl_tr, self.dl_ev, self.gallery_dl, self.dl_ev_gnn = loaders
