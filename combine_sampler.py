@@ -423,7 +423,8 @@ class MutualInformationSampler(Sampler):
         self.n_cl = num_samples
         self.epoch = 0
         self.nb_clusters = nb_clusters
-        self.softmax_temperature = softmax_temperature if softmax_temperature is  None else 1
+        self.softmax_temperature = softmax_temperature if softmax_temperature is not None else 1
+        print(f'Using softmax temperature: {self.softmax_temperature}')
 
 
         if batch_sampler == 'NumberSampler':
