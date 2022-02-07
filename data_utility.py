@@ -153,10 +153,11 @@ def get_val_loaders(data_root, num_workers, size_batch, num_classes_iter=None,
 
     elif 'mutualinformation' in mode.split('_'):
         
-        sampler = MutualInformationSampler(1, 7) #(num_classes_iter, num_elements_class)
         if eval_params is not None:
             softmax_temperature = eval_params['softmax_temperature'] if 'softmax_temperature' in eval_params else None
             sampler = MutualInformationSampler(1, 7, softmax_temperature=softmax_temperature) #(num_classes_iter, num_elements_class)
+        else:
+            sampler = MutualInformationSampler(1, 7) #(num_classes_iter, num_elements_class)
 
         dl_ev_gnn = torch.utils.data.DataLoader(
             dataset_ev,
