@@ -14,7 +14,7 @@ logger = logging.getLogger('GNNReID.Evaluator')
 
 
 class Evaluator_DML():
-    def __init__(self, output_test_enc='norm', output_test_gnn='norm', cat=0, nb_clusters=0, dev=0):
+    def __init__(self, output_test_enc='norm', output_test_gnn='norm', cat=0, nb_clusters=0, dev=0, softmax_temperature=None):
         
         self.nb_clusters = nb_clusters
         self.output_test_enc = output_test_enc
