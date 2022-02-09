@@ -56,7 +56,7 @@ class GraphGenerator():
         W = self._get_W(x)
         W, A = self._get_A(W)
 
-        A = torch.nonzero(A)
+        A = torch.nonzero(A) # stores A as indices instead of entire adjacency matrix
         W = W[A[:, 0], A[:, 1]]
 
         return W, A, x

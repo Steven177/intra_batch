@@ -2,6 +2,7 @@ from torch.utils.data.sampler import Sampler
 import random
 import copy
 import torch
+import scipy
 import sklearn.metrics.pairwise
 from collections import defaultdict
 import numpy as np
@@ -69,6 +70,19 @@ class CombineSampler(Sampler):
     def __len__(self):
         return len(self.flat_list)
 
+class RandomSampler(Sampler):
+    def __init__(self, dataset):
+        logger.info("Random Sampler")
+        self.dataset = dataset
+        self.linds = list(range(len(self.dataset.ys)))
+
+    def __iter__(self):
+        random.shuffle(self.linds)
+        return iter(self.linds)
+
+    def __len__(self) -> int:
+        return len(self.linds)
+
 
 class NumberSampler():
     def __init__(self, num_classes, num_samples, seed=None):
@@ -119,7 +133,7 @@ class KReciprocalSampler(Sampler):
         if self.sampler:
             self.num_classes, self.num_samples = self.sampler.sample()
             self.bs = self.num_classes * self.num_samples
-            quality_checker.num_samples = self.bs
+            # quality_checker.num_samples = self.bs
         
         if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
             x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
@@ -210,7 +224,7 @@ class KReciprocalSamplerInshop(Sampler):
         if self.sampler:
             self.num_classes, self.num_samples = self.sampler.sample()
             self.bs = self.num_classes * self.num_samples
-            quality_checker.num_samples = self.bs
+            # quality_checker.num_samples = self.bs
 
         if type(self.feature_dict_query[list(self.feature_dict_query.keys())[0]]) == dict:
             x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict_query.keys() for f in self.feature_dict_query[k].values()], 0)
@@ -302,7 +316,6 @@ class KReciprocalSamplerInshop(Sampler):
     def __len__(self):
         return len(self.flat_list)
 
-
 class ClusterSampler(Sampler):
     def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None):
         # kmeans
@@ -354,9 +367,8 @@ class ClusterSampler(Sampler):
     def __iter__(self):
         if self.sampler:
             self.cl_b, self.n_cl = self.sampler.sample()
-            quality_checker.num_samps=self.n_cl
-        if self.epoch % 5 == 2:
-            self.get_clusters()
+            #quality_checker.num_samps=self.n_cl
+        self.get_clusters()
         
         ddict = defaultdict(list)
         for idx, label in zip(self.indices, self.cluster):
@@ -380,7 +392,7 @@ class ClusterSampler(Sampler):
             # drop the last < n_cl elements
             while len(inds) >= self.n_cl:
                 split_list_of_indices.append(inds[:self.n_cl])
-                self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
+                # self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
                 inds = inds[self.n_cl:] 
             assert len(inds) == 0
                 
@@ -399,3 +411,205 @@ class ClusterSampler(Sampler):
         return len(self.flat_list)
 
 
+
+class MutualInformationSampler(Sampler):
+    def __init__(self, num_classes, num_samples, nb_clusters=None, batch_sampler=None, softmax_temperature=None):
+        logger.info('Mutual Information Sampler')
+        # kmeans
+        self.feature_dict = None
+        self.bs = num_classes * num_samples
+        self.cl_b = num_classes
+        self.n_cl = num_samples
+        self.epoch = 0
+        self.nb_clusters = nb_clusters
+        self.softmax_temperature = softmax_temperature if softmax_temperature is not None else 1
+        print(f'Using softmax temperature: {self.softmax_temperature}')
+
+
+        if batch_sampler == 'NumberSampler':
+            self.sampler = NumberSampler(num_classes, num_samples)
+        elif batch_sampler == 'BatchSizeSampler':
+            self.sampler = BatchSizeSampler()
+        else:
+            self.sampler = None
+
+    def get_clusters(self):
+        logger.info(self.nb_clusters)
+        # generate distance mat for all classes as in Hierachrical Triplet Loss
+        if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
+            x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
+            self.labels = [k for k in self.feature_dict.keys() for f in self.feature_dict[k].values()]
+            self.indices = [ind for k in self.feature_dict.keys() for ind in self.feature_dict[k].keys()]
+        else:
+            x = torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0) # [num_samples, -1]
+            self.indices = [k for k in self.feature_dict.keys()]
+        
+        print(f' x : {x.shape}')
+        prob_x = torch.nn.functional.softmax(x/self.softmax_temperature, dim=0)
+        print(f' prob x : {prob_x.shape}')
+        print(f' prob x numpy : {prob_x.numpy().shape}')
+
+        # Calculate JSD for all samples
+        # prob_x_np = prob_x.numpy()
+
+        # dis_mat = scipy.spatial.distance.jensenshannon(prob_x_np, prob_x_np, base=None, axis=0, keepdims=False)
+
+        N = prob_x.shape[0]
+
+
+        dis_mat = np.zeros((N,N))
+
+        for i in range(N):
+            for j in range(N):
+                dis_mat[i,j] = scipy.spatial.distance.jensenshannon(prob_x[i,:], prob_x[j,:])
+
+
+
+
+        logger.info('DBSCAN')
+        eps = 0.9
+        min_samples = 5
+        logger.info("Eps {}, min samples {}".format(eps, min_samples))
+        self.cluster = sklearn.cluster.DBSCAN(eps=eps, min_samples=min_samples, metric='precomputed').fit(dis_mat).labels_
+
+        # Cluster samples according to distance matrix (Agglomerative or DBSCAN)
+        # https://stackoverflow.com/questions/16246066/clustering-words-based-on-distance-matrix
+        # https://scikit-learn.org/dev/modules/generated/sklearn.cluster.DBSCAN.html#sklearn.cluster.DBSCAN
+        # class sklearn.cluster.DBSCAN(eps=0.5, *, min_samples=5, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)[source]¶
+        # https://scikit-learn.org/dev/modules/generated/sklearn.cluster.AgglomerativeClustering.html#sklearn.cluster.AgglomerativeClustering
+
+        # Sample according to clusters 
+        # from each class c sample i samples        
+
+
+        # ==--------------JENNY-------------------==
+        # self.nb_clusters = 600
+        #logger.info('ward')
+        # self.cluster = sklearn.cluster.AgglomerativeClustering(n_clusters=self.nb_clusters).fit(x).labels_
+        
+        # logger.info("Kmeans")
+        # self.cluster = sklearn.cluster.KMeans(self.nb_clusters).fit(x).labels_        
+        #logger.info('spectral')
+        #self.cluster = sklearn.cluster.SpectralClustering(self.nb_clusters, assign_labels="discretize", random_state=0).fit(x).labels_
+        #self.nb_clusters = 600
+        #logger.info('ward')
+        #self.cluster = sklearn.cluster.AgglomerativeClustering(n_clusters=self.nb_clusters).fit(x).labels_
+    def __iter__(self):
+        if self.sampler:
+            self.cl_b, self.n_cl = self.sampler.sample()
+            #quality_checker.num_samps=self.n_cl
+        # if self.epoch % 5 == 1:
+        self.get_clusters()
+        
+        ddict = defaultdict(list)
+        for idx, label in zip(self.indices, self.cluster):
+            ddict[label].append(idx)
+
+        l_inds = []
+        for key in ddict:
+            l_inds.append(ddict[key]) 
+        
+        l_inds = list(map(lambda a: random.sample(a, len(a)), l_inds))
+
+        for inds in l_inds:
+            choose = copy.deepcopy(inds)
+            while len(inds) < self.n_cl:
+                inds += [random.choice(choose)]
+
+        # split lists of a class every n_cl elements
+        split_list_of_indices = []
+        for inds in l_inds:
+            inds = inds + np.random.choice(inds, size=(len(inds) // self.n_cl + 1)*self.n_cl - len(inds), replace=False).tolist()
+            # drop the last < n_cl elements
+            while len(inds) >= self.n_cl:
+                split_list_of_indices.append(inds[:self.n_cl])
+                # self.quality_checker.check([self.labels[i] for i in inds[:self.n_cl]], inds[:self.n_cl])
+                inds = inds[self.n_cl:] 
+            assert len(inds) == 0
+                
+        # shuffle the order of classes --> Could it be that same class appears twice in one batch?
+        random.shuffle(split_list_of_indices)
+        if len(split_list_of_indices) % self.cl_b != 0:
+            b = np.random.choice(np.arange(len(split_list_of_indices)), size=self.cl_b - len(split_list_of_indices) % self.cl_b, replace=False).tolist()
+            [split_list_of_indices.append(split_list_of_indices[m]) for m in b]
+        assert len(split_list_of_indices) % self.cl_b == 0
+
+        self.flat_list = [item for sublist in split_list_of_indices for item in sublist]
+
+        return iter(self.flat_list)
+
+    def __len__(self):
+        return len(self.flat_list)
+
+
+
+"""
+class MutualInformationSampler(Sampler):
+    def __init__(self, num_classes, num_samples, batch_sampler=None):
+        self.feature_dict = None
+        self.bs = num_classes * num_samples
+        self.num_classes = num_classes
+        self.num_samples = num_samples
+
+        if batch_sampler == 'NumberSampler':
+            self.sampler = NumberSampler(num_classes, num_samples)
+        elif batch_sampler == 'BatchSizeSampler':
+            self.sampler = BatchSizeSampler()
+        else:
+            self.sampler = None
+
+
+    def get_clusters(self):
+        logger.info(self.nb_clusters)
+        # generate distance mat for all classes as in Hierachrical Triplet Loss
+        if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
+            x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
+            y = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
+            self.labels = [k for k in self.feature_dict.keys() for f in self.feature_dict[k].values()]
+            self.indices = [ind for k in self.feature_dict.keys() for ind in self.feature_dict[k].keys()]
+        else:
+            x = torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0)
+            y =  torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0)
+            self.indices = [k for k in self.feature_dict.keys()]
+        self.nb_clusters = 900
+        logger.info("Kmeans")
+        self.cluster = sklearn.cluster.KMeans(self.nb_clusters).fit(x).labels_        
+
+    def __iter__(self):
+
+        if self.sampler:
+            self.num_classes, self.num_samples = self.sampler.sample()
+            self.bs = self.num_classes * self.num_samples
+            quality_checker.num_samples = self.bs
+        
+        if type(self.feature_dict[list(self.feature_dict.keys())[0]]) == dict:
+            x = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
+            y = torch.cat([f.unsqueeze(0).cpu() for k in self.feature_dict.keys() for f in self.feature_dict[k].values()], 0)
+            self.labels = [k for k in self.feature_dict.keys() for f in self.feature_dict[k].values()]
+            indices = [ind for k in self.feature_dict.keys() for ind in self.feature_dict[k].keys()]
+        else:
+            x = torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0)
+            y =  torch.cat([f.unsqueeze(0).cpu() for f in self.feature_dict.values()], 0)
+            indices = [k for k in self.feature_dict.keys()]
+
+        # generate distance mat for all classes as in Hierachrical Triplet Loss
+        x = softmax(x) # x is prob distribution
+        # calculate pairwise mutual information for all samples 
+        # dist matrix (N * N)
+        # rank distance matrix or sample strategy according to highest sim value
+
+
+
+        m, n = x.size(0), y.size(0)
+        x = x.view(m, -1)
+        y = y.view(n, -1)
+        dist = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(m, n) + \
+               torch.pow(y, 2).sum(dim=1, keepdim=True).expand(n, m).t()
+
+        dist.addmm_(1, -2, x, y.t())
+        dist = dist.cpu().numpy()
+        sorted_dist = np.argsort(dist, axis=1)
+        
+    def __len__(self):
+        return 
+"""

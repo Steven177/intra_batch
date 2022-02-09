@@ -24,21 +24,25 @@ warnings.filterwarnings("ignore")
 
 def init_args():
     parser = argparse.ArgumentParser(description='Person Re-ID with GNN')
+    parser.add_argument("--seed", type=int, default=0, help="Seed to set")
+    parser.add_argument("--deterministic", action="store_false", help="Make everything deterministic")
     parser.add_argument('--config_path', type=str, default='config/config_cub_test.yaml', help='Path to config file')
     parser.add_argument('--dataset_path', type=str, default='from_yaml', help='Give path to dataset, else path from yaml file will be taken')
     parser.add_argument('--bb_path', type=str, default='from_yaml', help='Give path to bb weight, else path from yaml file will be taken')
     parser.add_argument('--gnn_path', type=str, default='from_yaml', help='Give path to gnn weight, else path from yaml file will be taken')
     parser.add_argument('--net_type', type=str, default='from_yaml', help='Give net_type you want to use: resnet18/resnet32/resnet50/resnet101/resnet152/densenet121/densenet161/densenet169/densenet201/bn_inception')
     parser.add_argument('--is_apex', type=str, default='from_yaml', help='If you want to use apex set to 1')
-    parser.add_argument('--name', type=str, help='experiment name for results subfolder')
+    # parser.add_argument('--name', type=str, help='experiment name for results subfolder')
     return parser.parse_args()
 
 
 def main(args):
+    utils.set_seeds(args.seed)
+    
     with open(args.config_path, 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     
-    assert args.name, f'Please add a name with the flag --name'
+    # assert args.name, f'Please add a name with the flag --name'
     if args.dataset_path != 'from_yaml':
         config['dataset']['dataset_path'] = args.dataset_path
     if args.bb_path != 'from_yaml':
@@ -53,9 +57,11 @@ def main(args):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logger.info('Switching to device {}'.format(device))
 
-    save_folder_results = osp.join('results', args.name)
+    save_folder_results = "results"
+    # save_folder_results = osp.join('results', args.name)
     utils.make_dir(save_folder_results)
-    save_folder_nets = osp.join('results_nets', args.name)
+    save_folder_nets = "results_nets"
+    # save_folder_nets = osp.join('results_nets', args.name)
 
     utils.make_dir(save_folder_nets)
     
