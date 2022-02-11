@@ -77,34 +77,35 @@ class Trainer():
                     **self.config['models']['encoder_params'])
             
             self.encoder = self.encoder.to(self.device) 
-            
-            finetuning_net_params = self.config['models']['finetuning_net_params']
-            self.finetuning_net = net.FinetuningNetwork(sz_embed, self.device, finetuning_net_params , num_layers=finetuning_net_params['finetuning']['num_layers']).to(self.device)
 
             # In case of pretrained network
-            if self.config['models']['finetuning_net_params']['pretrained_path'] != "no":
-                load_dict = torch.load(self.config['models']['finetuning_net_params']['pretrained_path'], 
-                        map_location='cpu')
-                self.finetuning_net.load_state_dict(load_dict)
-            """
-            self.gnn = net.GNNReID(self.device, 
-                    self.config['models']['gnn_params'], 
-                    sz_embed).to(self.device)
-            
-            if self.config['models']['gnn_params']['pretrained_path'] != "no": 
-                load_dict = torch.load(self.config['models']['gnn_params']['pretrained_path'], 
-                        map_location='cpu')
-                self.gnn.load_state_dict(load_dict)
+            if 'finetuning_net_params' in self.config['models']:
+                finetuning_net_params = self.config['models']['finetuning_net_params']
+                self.finetuning_net = net.FinetuningNetwork(sz_embed, self.device, finetuning_net_params , num_layers=finetuning_net_params['finetuning']['num_layers']).to(self.device)
+                if self.config['models']['finetuning_net_params']['pretrained_path'] != "no":
+                    load_dict = torch.load(self.config['models']['finetuning_net_params']['pretrained_path'], 
+                            map_location='cpu')
+                    self.finetuning_net.load_state_dict(load_dict)
+                self.use_finetuning = True
+            else:
+                self.gnn = net.GNNReID(self.device, 
+                        self.config['models']['gnn_params'], 
+                        sz_embed).to(self.device)
+                
+                if self.config['models']['gnn_params']['pretrained_path'] != "no": 
+                    load_dict = torch.load(self.config['models']['gnn_params']['pretrained_path'], 
+                            map_location='cpu')
+                    self.gnn.load_state_dict(load_dict)
+                self.use_finetuning = False
 
             self.graph_generator = net.GraphGenerator(self.device, **self.config['graph_params'])
-            """
 
             self.evaluator = Evaluator_DML(nb_clusters=self.nb_clusters, 
                     dev=self.device, **self.config['eval_params'])
-            """ 
-            params = list(set(self.encoder.parameters())) + list(set(self.gnn.parameters()))
-            """
-            params = list(set(self.encoder.parameters())) + list(set(self.finetuning_net.parameters()))
+            if self.use_finetuning:
+                params = list(set(self.encoder.parameters())) + list(set(self.finetuning_net.parameters()))
+            else:
+                params = list(set(self.encoder.parameters())) + list(set(self.gnn.parameters()))
 
             param_groups = [{'params': params,
                              'lr': self.config['train_params']['lr']}]
@@ -119,8 +120,11 @@ class Trainer():
             if self.config['train_params']['is_apex'] == 1:
                 global amp
                 from apex import amp
-                # [self.encoder, self.gnn], self.opt = amp.initialize([self.encoder, self.gnn], self.opt,opt_level="O1")
-                [self.encoder, self.finetuning_net], self.opt = amp.initialize([self.encoder, self.finetuning_net], self.opt,opt_level="O1")
+                if self.use_finetuning:
+                    [self.encoder, self.finetuning_net], self.opt = amp.initialize([self.encoder, self.finetuning_net], self.opt,opt_level="O1")
+                else:
+                    [self.encoder, self.gnn], self.opt = amp.initialize([self.encoder, self.gnn], self.opt,opt_level="O1")
+
 
             if torch.cuda.device_count() > 1:
                 self.encoder = nn.DataParallel(self.encoder)
@@ -142,8 +146,13 @@ class Trainer():
                 os.rename(osp.join(self.save_folder_nets, self.fn + '.pth'),
                           osp.join(self.save_folder_nets_final, str(best_recall_iter) + mode + self.net_type + '_' +
                           self.dataset_short + '.pth'))
-                os.rename(osp.join(self.save_folder_nets, 'finetuning_' + self.fn + '.pth'),
-                          osp.join(self.save_folder_nets_final, str(best_recall_iter) + 'finetuning_' + mode + self.net_type + '_' +
+                if self.use_finetuning:
+                    os.rename(osp.join(self.save_folder_nets, 'finetuning_' + self.fn + '.pth'),
+                            osp.join(self.save_folder_nets_final, str(best_recall_iter) + 'finetuning_' + mode + self.net_type + '_' +
+                            self.dataset_short + '.pth'))
+                else:
+                    os.rename(osp.join(self.save_folder_nets, 'gnn_' + self.fn + '.pth'),
+                          osp.join(self.save_folder_nets_final, str(best_recall_iter) + 'gnn_' + mode + self.net_type + '_' +
                           self.dataset_short + '.pth'))
                 best_recall = best_recall_iter
             elif 'test' in self.config['mode'].split('_'):
@@ -172,24 +181,24 @@ class Trainer():
                     logger.info("reduce learning rate")
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
-                    """
-                    self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'gnn_' + self.fn + '.pth')))
-                    """
-                    self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'finetuning_' + self.fn + '.pth')))
+                    if self.use_finetuning:
+                        self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'finetuning_' + self.fn + '.pth')))
+                    else:
+                        self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'gnn_' + self.fn + '.pth')))
 
                     for g in self.opt.param_groups:
                         g['lr'] = train_params['lr'] / 10.
 
                 if e == 51:
                     logger.info("reduce learning rate")
-                    """
-                    self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'gnn_' + self.fn + '.pth')))
-                    """
-                    self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'finetuning_' + self.fn + '.pth')))
+                    if self.use_finetuning_net:
+                        self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'finetuning_' + self.fn + '.pth')))
+                    else:
+                        self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'gnn_' + self.fn + '.pth')))
 
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
@@ -278,13 +287,11 @@ class Trainer():
        
 
         # Add other losses of not pretraining
-        """
         if self.gnn_loss or self.of:
             edge_attr, edge_index, fc7 = self.graph_generator.get_graph(fc7, Y)
             if type(loss) != int:
                 loss = loss.cuda(self.device)
             pred, feats = self.gnn(fc7, edge_index, edge_attr, train_params['output_train_gnn'])
-        """
         #self.comp_list.append(self.comp(fc7, feats[-1]))
         
         # Forward step of finetuning net
@@ -391,14 +398,14 @@ class Trainer():
                         torch.save(self.encoder.state_dict(),
                                    osp.join(self.save_folder_nets,
                                             self.fn + '.pth'))
-                        """
-                        torch.save(self.gnn.state_dict(), 
-                                osp.join(self.save_folder_nets,
-                                            'gnn_' + self.fn + '.pth'))
-                        """
-                        torch.save(self.finetuning_net.state_dict(),
+                        if self.use_finetuning:
+                            torch.save(self.finetuning_net.state_dict(),
                                    osp.join(self.save_folder_nets,
                                             'finetuning_' + self.fn + '.pth'))
+                        else:
+                            torch.save(self.gnn.state_dict(), 
+                                osp.join(self.save_folder_nets,
+                                            'gnn_' + self.fn + '.pth'))
 
         else:
             logger.info(
@@ -483,8 +490,10 @@ class Trainer():
         self.losses = defaultdict(list)
         self.losses_mean = defaultdict(list)
 
-        # self.every = self.config['models']['gnn_params']['every']
-        self.every = self.config['models']['finetuning_net_params']['every']
+        if self.use_finetuning:
+            self.every = self.config['models']['finetuning_net_params']['every']
+        else:
+            self.every = self.config['models']['gnn_params']['every']
         
         self.loss_modes = params['fns'].split('_')
 
@@ -511,17 +520,6 @@ class Trainer():
             else:
                 self.gnn_loss = None
         
-        else: #  loss after every layer
-            if 'gnn' in self.loss_modes:
-                self.gnn_loss = [nn.CrossEntropyLoss().to(self.device) for
-                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])] 
-            elif 'lsgnn' in self.loss_modes:
-                use_gpu = False if self.device == torch.device('cpu') else True
-                self.gnn_loss = [losses.CrossEntropyLabelSmooth(
-                    num_classes=num_classes, dev=self.gnn_dev, use_gpu=use_gpu).to(self.device) for
-                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])]
-        # PHILIPP: where does gnn_dev come from?
-        """
         else: # GNN loss after every layer
             if 'gnn' in params['fns'].split('_'):
                 self.gnn_loss = [nn.CrossEntropyLoss().to(self.device) for
@@ -531,6 +529,16 @@ class Trainer():
                 self.gnn_loss = [losses.CrossEntropyLabelSmooth(
                     num_classes=num_classes, dev=self.gnn_dev, use_gpu=use_gpu).to(self.device) for
                         _ in range(self.config['models']['gnn_params']['gnn']['num_layers'])]
+        """
+        else: #  loss after every layer
+            if 'gnn' in self.loss_modes:
+                self.gnn_loss = [nn.CrossEntropyLoss().to(self.device) for
+                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])] 
+            elif 'lsgnn' in self.loss_modes:
+                use_gpu = False if self.device == torch.device('cpu') else True
+                self.gnn_loss = [losses.CrossEntropyLabelSmooth(
+                    num_classes=num_classes, dev=self.gnn_dev, use_gpu=use_gpu).to(self.device) for
+                        _ in range(self.config['models']['finetuning_net_params']['finetuning']['num_layers'])]
         """
         # CrossEntropy Loss
         if 'lsce' in params['fns'].split('_'):
@@ -614,8 +622,10 @@ class Trainer():
         config = {'num_layers': random.randint(1, 4)}
         config = {'num_heads': random.choice([1, 2, 4, 8])}
         
-        self.config['models']['finetuning_net_params']['finetuning'].update(config)
-        # self.config['models']['gnn_params']['gnn'].update(config)
+        if self.use_finetuning:
+            self.config['models']['finetuning_net_params']['finetuning'].update(config)
+        else:
+            self.config['models']['gnn_params']['gnn'].update(config)
 
         logger.info("Updated Hyperparameters:")
         logger.info(self.config)
