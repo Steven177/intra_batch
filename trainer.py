@@ -172,12 +172,12 @@ class Trainer():
                     logger.info("reduce learning rate")
                     self.encoder.load_state_dict(torch.load(
                         osp.join(self.save_folder_nets, self.fn + '.pth')))
-                    """
-                    self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'gnn_' + self.fn + '.pth')))
-                    """
-                    self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
-                        'finetuning_' + self.fn + '.pth')))
+                    if self.use_finetuning:
+                        self.finetuning_net.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'finetuning_' + self.fn + '.pth')))
+                    else:
+                        self.gnn.load_state_dict(torch.load(osp.join(self.save_folder_nets,
+                            'gnn_' + self.fn + '.pth')))
 
                     for g in self.opt.param_groups:
                         g['lr'] = train_params['lr'] / 10.
@@ -391,14 +391,14 @@ class Trainer():
                         torch.save(self.encoder.state_dict(),
                                    osp.join(self.save_folder_nets,
                                             self.fn + '.pth'))
-                        """
-                        torch.save(self.gnn.state_dict(), 
-                                osp.join(self.save_folder_nets,
-                                            'gnn_' + self.fn + '.pth'))
-                        """
-                        torch.save(self.finetuning_net.state_dict(),
+                        if self.use_finetuning:
+                            torch.save(self.finetuning_net.state_dict(),
                                    osp.join(self.save_folder_nets,
                                             'finetuning_' + self.fn + '.pth'))
+                        else:
+                            torch.save(self.gnn.state_dict(), 
+                                osp.join(self.save_folder_nets,
+                                            'gnn_' + self.fn + '.pth'))
 
         else:
             logger.info(
