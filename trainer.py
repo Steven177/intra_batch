@@ -490,8 +490,10 @@ class Trainer():
         self.losses = defaultdict(list)
         self.losses_mean = defaultdict(list)
 
-        # self.every = self.config['models']['gnn_params']['every']
-        self.every = self.config['models']['finetuning_net_params']['every']
+        if self.use_finetuning:
+            self.every = self.config['models']['finetuning_net_params']['every']
+        else:
+            self.every = self.config['models']['gnn_params']['every']
         
         self.loss_modes = params['fns'].split('_')
 
